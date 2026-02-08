@@ -1,0 +1,145 @@
+[package]
+name = "skein-test"
+version = "0.1.0"
+edition = "2024"
+
+[patch.crates-io]
+# bevy = { path = "../bevy-fork" }
+bevy = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+gltf = { git = "https://github.com/gltf-rs/gltf.git", branch = "main" }
+
+bevy_math = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_ecs = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_internal = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+
+bevy_reflect = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_app = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_color = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_log = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_platform = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_render = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_utils = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+
+bevy_asset = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_mesh = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_image = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_text = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_shader = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_core_pipeline = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_camera = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_sprite = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_picking = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_light = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_gizmos = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_sprite_render = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_ui = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_ui_render = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_pbr = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_transform = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_window = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_input = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_input_focus = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_winit = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_gltf = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_tasks = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_scene = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_remote = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_time = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+bevy_diagnostic = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
+
+avian3d = { git = "https://github.com/avianphysics/avian", branch = "main" }
+
+[dependencies]
+bevy = { version = "0.18.0", default-features = false, features = [
+    # 3d without sound.
+    "default_app",
+    "default_platform",
+    "3d_api",
+    "3d_bevy_render",
+    "scene",
+    # "audio",
+    "picking",
+
+    "ui",
+
+    # And these optional:
+    "dev",
+    # "async-io",
+    "bevy_remote",
+    "jpeg",
+    "webp",
+    "track_location",
+    "asset_processor",
+    "experimental_pbr_pcss",
+
+    "basis-universal",
+    # "trace_tracy",
+] }
+
+bevy_skein = "0.5.0"
+# Set max log levels. This helps avoid unwanted low-severity log spam, which can affect performance.
+log = { version = "0.4", features = [
+    "max_level_debug",
+    "release_max_level_warn",
+] }
+tracing = { version = "0.1", features = [
+    "max_level_debug",
+    "release_max_level_warn",
+] }
+avian3d = { version = "0.6.0-dev", default-features = false, features = [
+	"3d", "f32",
+	"collider-from-mesh",
+     # "f64",
+    "parry-f32",
+    # "parry-f64",
+    "diagnostic_ui",
+    "debug-plugin",
+] }
+# avian3d = { version = "0.5.0", default-features = false, features = [
+# 	"3d", "f32",
+# 	"collider-from-mesh",
+#     # "f64",
+#     "parry-f32",
+#     # "parry-f64",
+#     "diagnostic_ui",
+#     "debug-plugin",
+# ] }
+bevy_egui = { version = "0.39", features = ["render", "serde"] }
+bevy-inspector-egui = "0.36"
+egui = { version = "0.33", features = ["bytemuck"] }
+
+firewheel = { version = "0.10.0" }
+
+bevy_seedling = { version = "0.7.0", default-features = false, features = [
+    "stream", "wav", "ogg", "rand", "loudness", "reflect",
+    "hrtf",
+] }
+
+# Idiomatic Bevy code often triggers these lints, and the CI workflow treats them as errors.
+# In some cases they may still signal poor code quality however, so consider commenting out these lines.
+[lints.clippy]
+# Bevy supplies arguments to systems via dependency injection, so it's natural for systems to
+# request more than 7 arguments -- which triggers this lint.
+too_many_arguments = "allow"
+# Queries that access many components may trigger this lint.
+type_complexity = "allow"
+
+# Enable a small amount of optimization in the dev profile.
+[profile.dev]
+opt-level = 1
+
+# Enable a large amount of optimization in the dev profile for dependencies.
+[profile.dev.package."*"]
+opt-level = 1
+
+# Remove expensive debug assertions due to <https://github.com/bevyengine/bevy/issues/14291>
+[profile.dev.package.wgpu-types]
+debug-assertions = false
+
+[profile.release]
+# Compile the entire crate as one unit.
+# Slows compile times, marginal improvements.
+codegen-units = 1
+# Do a second optimization pass over the entire program, including dependencies.
+# Slows compile times, marginal improvements.
+lto = "thin"
