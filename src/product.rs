@@ -1,6 +1,8 @@
 
 use bevy::prelude::*;
 
+pub const PRODUCT_NAME: &str = "JAM";
+
 /// Name of the product, as seen in the main menu and window title.
 #[derive(Resource, Reflect)]
 #[reflect(Resource)]

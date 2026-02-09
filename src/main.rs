@@ -27,6 +27,7 @@ use crate::level_state::LevelStatePlugin;
 use crate::lifecycle::LifecyclePlugin;
 use crate::lifecycle::PauseState;
 use crate::menus::MenuPlugin;
+use crate::product::PRODUCT_NAME;
 use crate::product::ProductName;
 use crate::states_sets::*;
 use crate::menus_common::*;
@@ -102,8 +103,6 @@ struct Shake(pub Vec3);
 /// The process may take a few frames (e.g. waiting on network).
 #[derive(Debug, Resource)]
 pub struct ExitRequest;
-
-const PRODUCT_NAME: &str = "JAM";
 
 fn main() {
     App::new()
@@ -489,9 +488,8 @@ fn spawn_ball(
 
     if timer.duration().is_zero() {
         *timer = Timer::from_seconds(0.0125, TimerMode::Repeating);
-        // *timer = Timer::from_seconds(1., TimerMode::Repeating);
     }
-    if !timer.tick(time.delta()).is_finished() {
+    if !timer.tick(time.delta()).just_finished() {
         return;
     }
 
