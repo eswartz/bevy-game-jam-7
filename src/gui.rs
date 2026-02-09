@@ -6,17 +6,11 @@ use bevy::window::CursorOptions;
 use bevy::window::PrimaryWindow;
 use bevy::window::WindowFocused;
 use bevy_asset_loader::prelude::*;
-use bevy_egui::EguiPrimaryContextPass;
 use bevy_inspector_egui::DefaultInspectorConfigPlugin;
 
-use crate::debug::update_egui_inspector_ui;
 use crate::states_sets::OverlayState;
 use crate::states_sets::ProgramState;
 use crate::world_state::SkyboxModel;
-
-// use daunt_common::prelude::*;
-// use daunt_server::prelude::*;
-
 
 pub struct GuiPlugin;
 impl Plugin for GuiPlugin {

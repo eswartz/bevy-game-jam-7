@@ -772,7 +772,7 @@ fn on_enter_video_menu(
 }
 
 fn start_game(mut commands: Commands) {
-    commands.set_state(OverlayState::Hidden);
+    commands.set_state(OverlayState::Loading);
     commands.set_state(ProgramState::InGame);
     commands.set_state(GameplayState::AssetsLoading);
     // commands.insert_resource(ConnectToServer);

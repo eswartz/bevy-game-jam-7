@@ -12,25 +12,19 @@ mod world_state;
 mod world_ui;
 mod markers;
 mod texutils;
-mod level_state;
+// mod level_state;
 
 use crate::actions::ActionPlugin;
 use crate::actions::UserAction;
 use crate::debug::*;
 use crate::audio::*;
-use crate::gui::GuiAssets;
 use crate::gui::GuiPlugin;
-use crate::level_state::LevelContentDefinedMessage;
-use crate::level_state::LevelGeometryLoadedMessage;
-use crate::level_state::LevelLoadFinishedMessage;
-use crate::level_state::LevelStatePlugin;
 use crate::lifecycle::LifecyclePlugin;
 use crate::lifecycle::PauseState;
 use crate::menus::MenuPlugin;
 use crate::product::PRODUCT_NAME;
 use crate::product::ProductName;
 use crate::states_sets::*;
-use crate::menus_common::*;
 use crate::video::VideoCameraSettingsChanged;
 use crate::video::VideoEffectSettingsChanged;
 use crate::video::VideoSettings;
@@ -41,6 +35,7 @@ use std::time::Duration;
 
 use avian3d::prelude::*;
 use bevy::core_pipeline::oit::OrderIndependentTransparencySettings;
+use bevy::ecs::message::MessageUpdateSystems;
 use bevy::prelude::*;
 use bevy::camera::Exposure;
 use bevy::core_pipeline::prepass::DepthPrepass;
@@ -55,12 +50,10 @@ use bevy::{
     asset::AssetMetaCheck, camera::visibility::NoFrustumCulling, dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin}, gltf::GltfMeshName, image::{ImageAddressMode, ImageSamplerDescriptor}, prelude::*, scene::SceneInstanceReady, winit::WinitSettings
 };
 use bevy_egui::{
-    EguiGlobalSettings, EguiPlugin, EguiPrimaryContextPass,
+    EguiGlobalSettings, EguiPlugin,
 };
-use bevy_inspector_egui::DefaultInspectorConfigPlugin;
 use bevy_seedling::SeedlingPlugin;
 use bevy_skein::SkeinPlugin;
-use leafwing_input_manager::plugin::InputManagerPlugin;
 use leafwing_input_manager::prelude::ActionState;
 
 
@@ -153,20 +146,10 @@ fn main() {
             )
         )
 
-
         .add_loading_state(
             LoadingState::new(ProgramState::Initializing)
                 .continue_to_state(ProgramState::New)
         )
-
-        // .configure_loading_state(
-        //     LoadingStateConfig::new(ProgramState::Initializing)
-        //         .load_collection::<GuiAssets>()
-        // )
-        // .configure_loading_state(
-        //     LoadingStateConfig::new(ProgramState::LoadingSave)
-        //         .load_collection::<GuiAssets>()
-        // )
 
         //////
         .add_plugins(EguiPlugin::default())
@@ -191,13 +174,10 @@ fn main() {
 
         ////////
 
+        // Custom exit handling.
         .add_systems(First, (
-            check_app_exit
-                // .in_set(MessageUpdateSystems)
-                ,
-            check_windows_closed
-                // .in_set(MessageUpdateSystems)
-                ,
+            check_app_exit.in_set(MessageUpdateSystems),
+            check_windows_closed.in_set(MessageUpdateSystems),
         ).chain())
 
         .add_systems(OnEnter(ProgramState::Initializing),
@@ -238,22 +218,18 @@ fn main() {
         .add_plugins(MenuPlugin)
 
         .add_plugins(LifecyclePlugin)
-        .add_plugins(LevelStatePlugin)
+        // .add_plugins(LevelStatePlugin)
         .add_plugins(GuiPlugin)
         .add_plugins(WorldUiPlugin)
         .add_plugins(WorldStatePlugin)
         .add_plugins(DebugPlugin)
 
-        .add_systems(Update,
-            (
-                process_global_actions,
-                check_actions,
-            )
-        )
         .insert_resource(VideoSettings::default())
 
         ////////
 
+        .init_state::<GameplayState>()
+        .init_state::<LevelState>()
         .insert_resource(ProductName(PRODUCT_NAME.to_string()))
 
         .insert_resource(PauseState::new(false))
@@ -272,10 +248,18 @@ fn main() {
         )
         .add_systems(Update, (
             check_ball_death, shake_base,
-        ).run_if(in_state(GameplayState::Playing)))
+        ).run_if(in_state(LevelState::Playing)))
         .add_systems(PostUpdate, (
             spawn_ball,
-        ).run_if(in_state(GameplayState::Playing)))
+        ).run_if(in_state(LevelState::Playing)))
+
+        .add_systems(Update,
+            (
+                process_global_actions,
+                check_actions,
+            ).run_if(in_state(LevelState::Playing))
+        )
+
         .run();
 }
 
@@ -384,7 +368,6 @@ fn check_windows_closed(windows: Query<&Window>, mut commands: Commands) {
 fn on_enter_initializing(
     mut commands: Commands,
     camera_q: Query<&Camera, With<Camera2d>>,
-    asset_server: Res<AssetServer>,
 ) {
     if camera_q.single().is_err() {
         commands.spawn((
@@ -400,16 +383,18 @@ fn on_enter_initializing(
     }
 }
 
-fn on_enter_loading(mut next_program_state: ResMut<NextState<ProgramState>>) {
-    next_program_state.set(ProgramState::LaunchMenu);
+fn on_enter_loading(mut commands: Commands) {
+    commands.set_state(ProgramState::LaunchMenu);
 }
 
-fn on_enter_launch_menu(mut next_overlay_state: ResMut<NextState<OverlayState>>) {
-    next_overlay_state.set(OverlayState::MainMenu);
+fn on_enter_launch_menu(mut commands: Commands) {
+    commands.set_state(OverlayState::MainMenu);
 }
 
-fn on_exit_launch_menu(mut next_overlay_state: ResMut<NextState<OverlayState>>) {
-    next_overlay_state.set(OverlayState::Hidden);
+fn on_exit_launch_menu(state: Res<State<OverlayState>>, mut commands: Commands) {
+    if state.get().is_menu() {
+        commands.set_state(OverlayState::Hidden);
+    }
 }
 
 fn on_enter_in_game(mut time: ResMut<Time<Physics>>) {
@@ -477,7 +462,7 @@ fn observe_spawn_mesh(
 fn spawn_ball(
     mut commands: Commands,
     generator_q: Query<(Entity, &Transform), With<Generator>>,
-    time: Res<Time>,
+    time: Res<Time<Physics>>,
     assets: Res<AssetServer>,
     spawning: Res<Spawning>,
     mut timer: Local<Timer>,
@@ -487,7 +472,7 @@ fn spawn_ball(
     }
 
     if timer.duration().is_zero() {
-        *timer = Timer::from_seconds(0.0125, TimerMode::Repeating);
+        *timer = Timer::from_seconds(0.125, TimerMode::Repeating);
     }
     if !timer.tick(time.delta()).just_finished() {
         return;
@@ -510,7 +495,7 @@ fn check_actions(
     keys: Res<ButtonInput<KeyCode>>,
 
     base: Res<Base>,
-    time: Res<Time>,
+    time: Res<Time<Physics>>,
     shake: Option<Res<Shake>>,
     spawning: Res<Spawning>,
     mut commands: Commands,

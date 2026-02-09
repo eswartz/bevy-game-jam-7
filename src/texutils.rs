@@ -2,7 +2,7 @@ use bevy::{
     prelude::*,
     asset::RenderAssetUsages,
     render::{
-        render_resource::{Extent3d, TextureDimension, TextureFormat},
+        render_resource::{Extent3d, TextureDimension},
     },
 };
 use bevy::{image::TextureFormatPixelInfo};
@@ -73,10 +73,10 @@ use wgpu::TextureViewDescriptor;
 
 
 #[derive(Debug)]
+#[allow(unused)]
 pub enum ImageError {
     NoData,
     BadSize,
-    CannotTransform,
     TextureError(bevy::image::TextureAccessError),
 }
 
