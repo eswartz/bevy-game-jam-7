@@ -2,7 +2,10 @@ use std::sync::atomic::Ordering;
 
 use avian3d::prelude::Physics;
 use avian3d::prelude::PhysicsTime as _;
+use bevy_seedling::prelude::*;
+use bevy_seedling::prelude::PlaybackSettings;
 use bevy::prelude::*;
+use bevy_seedling::sample::SamplePlayer;
 
 use crate::markers::DespawnAfter;
 
@@ -65,9 +68,14 @@ impl PauseState {
     }
 }
 
+#[derive(Component)]
+pub(crate) struct PlaybackPaused;
+
 pub(crate) fn check_pause_request(
+    mut commands: Commands,
     paused: ResMut<PauseState>,
     mut time: ResMut<Time<Physics>>,
+    mut settings_q: Query<(Entity, &mut PlaybackSettings, Option<&PlaybackPaused>), With<SamplePlayer>>,
     // synths_paused: Res<MidiSynthsPaused>,
     // mut animator_transform_q: Query<&mut TweenAnim>,
     // mut time_runner_q: Query<&mut TimeRunner>,
@@ -76,6 +84,12 @@ pub(crate) fn check_pause_request(
         let pause = paused.is_paused();
         if pause {
             time.pause();
+            for (ent, mut settings, _) in settings_q.iter_mut() {
+                if *settings.play {
+                    settings.pause();
+                    commands.entity(ent).insert(PlaybackPaused);
+                }
+            }
             // synths_paused.0.store(true, Ordering::SeqCst);
             // for mut animator in animator_transform_q.iter_mut() {
             //     animator.playback_state = bevy_tweening::PlaybackState::Paused;
@@ -85,6 +99,12 @@ pub(crate) fn check_pause_request(
             // }
         } else {
             time.unpause();
+            for (ent, mut settings, paused) in settings_q.iter_mut() {
+                if paused.is_some() {
+                    settings.play();
+                    commands.entity(ent).remove::<PlaybackPaused>();
+                }
+            }
             // synths_paused.0.store(false, Ordering::SeqCst);
             // for mut animator in animator_transform_q.iter_mut() {
             //     animator.playback_state = bevy_tweening::PlaybackState::Playing;

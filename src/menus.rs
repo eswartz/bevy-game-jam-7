@@ -2,10 +2,18 @@ use bevy::camera::visibility::RenderLayers;
 use bevy::ecs::world::CommandQueue;
 use bevy::prelude::*;
 use bevy::sprite::Text2dShadow;
+use bevy_seedling::pool::SamplerPool;
+use bevy_seedling::prelude::MainBus;
+use bevy_seedling::prelude::VolumeNode;
+use bevy_seedling::prelude::Volume;
 // use bevy_pretty_text::prelude::*;
 use strum::VariantArray;
 
 use crate::ExitRequest;
+use crate::audio::Music;
+use crate::audio::Sfx;
+use crate::audio::UiSfx;
+use crate::audio::UserVolume;
 use crate::gui::GuiAssets;
 use crate::lifecycle::PauseState;
 use crate::product::ProductName;
@@ -380,49 +388,56 @@ fn on_enter_audio_menu(
     mut commands: Commands,
     program_state: Res<State<ProgramState>>,
     mut previous_items: ResMut<PreviousMenuItems>,
+    // mut master_vol_q: Single<&mut UserVolume, With<MainBus>>,
+    // mut music_vol_q: Single<&mut UserVolume, With<SamplerPool<Music>>>,
+    // mut fx_vol_q: Single<&mut UserVolume, With<SamplerPool<Sfx>>>,
+    // mut ui_vol_q: Single<&mut UserVolume, With<SamplerPool<UiSfx>>>,
 ) {
     macro_rules! make_volume_getter_setter_mute {
-        ($getter:ident $setter:ident $get_mute:ident $set_mute:ident => $channel:tt) => {
+        ($getter:ident $setter:ident $get_mute:ident $set_mute:ident => $bus_or_pool:path) => {
             let $getter = commands.register_system(IntoSystem::into_system(|
-                In(entity): In<Entity>, mut slider_q: Query<&mut MenuSlider>, channels: Audio| {
-                slider_q.get_mut(entity).unwrap().current = Some(channels.$channel.volume.to_linear());
-            }));
+                In(entity): In<Entity>, mut slider_q: Query<&mut MenuSlider>,
+                    vol_q: Single<&mut UserVolume, With<$bus_or_pool>>
+                | {
+                    slider_q.get_mut(entity).unwrap().current = Some(vol_q.volume.linear());
+                }
+            ));
             let $setter = commands.register_system(IntoSystem::into_system(
-                |In(v): In<f32>, mut channels: Audio| {
-                    channels.$channel.volume = bevy::audio::Volume::Linear(v);
-                    channels.apply_volumes();
+                |In(v): In<f32>,
+                    mut vol_q: Single<&mut UserVolume, With<$bus_or_pool>>| {
+                    vol_q.volume = Volume::Linear(v);
                 },
             ));
             let $get_mute = commands.register_system(IntoSystem::into_system(|
-                In(entity): In<Entity>, mut toggle_q: Query<&mut MenuToggle>, channels: Audio| {
-                toggle_q.get_mut(entity).unwrap().current = Some(!channels.$channel.muted);
+                In(entity): In<Entity>, mut toggle_q: Query<&mut MenuToggle>,
+                    vol_q: Single<&mut UserVolume, With<$bus_or_pool>>| {
+                toggle_q.get_mut(entity).unwrap().current = Some(!vol_q.muted);
             }));
             let $set_mute = commands.register_system(IntoSystem::into_system(
-                |In(v): In<bool>, mut channels: Audio| {
-                    channels.$channel.muted = !v;
-                    channels.apply_volumes();
+                |In(v): In<bool>,
+                    mut vol_q: Single<&mut UserVolume, With<$bus_or_pool>>| {
+                    vol_q.muted = !v;
                 },
             ));
         };
     }
 
-    // make_volume_getter_setter_mute!(get_master set_master get_master_muted set_master_muted => main_volume);
-    // make_volume_getter_setter_mute!(get_music set_music  get_music_muted set_music_muted => music_volume);
-    // make_volume_getter_setter_mute!(get_effects set_effects  get_effects_muted set_effects_muted  => effects_volume);
-    // make_volume_getter_setter_mute!(get_gameplay set_gameplay  get_gameplay_muted set_gameplay_muted  => gameplay_volume);
-    // make_volume_getter_setter_mute!(get_ambient set_ambient  get_ambient_muted set_ambient_muted  => ambient_volume);
+    make_volume_getter_setter_mute!(get_master set_master get_master_muted set_master_muted => MainBus);
+    make_volume_getter_setter_mute!(get_music set_music  get_music_muted set_music_muted => SamplerPool<Music>);
+    make_volume_getter_setter_mute!(get_effects set_effects  get_effects_muted set_effects_muted  => SamplerPool<Sfx>);
+    make_volume_getter_setter_mute!(get_gameplay set_gameplay  get_gameplay_muted set_gameplay_muted  => SamplerPool<UiSfx>);
 
-    // let make_audio_slider = |getter, setter, defval| -> MenuSlider {
-    //     MenuSlider::new(
-    //         getter,
-    //         setter,
-    //         move || defval,
-    //         |v| (v * 100.0).round(),
-    //         |v| v / 100.0,
-    //         0.0..=100.0,
-    //         1.0,
-    //     )
-    // };
+    let make_audio_slider = |getter, setter, defval| -> MenuSlider {
+        MenuSlider::new(
+            getter,
+            setter,
+            move || defval,
+            |v| (v * 100.0).round(),
+            |v| v / 100.0,
+            0.0..=100.0,
+            1.0,
+        )
+    };
 
     MenuItemBuilder::new(
         commands,
@@ -432,61 +447,50 @@ fn on_enter_audio_menu(
         1.0,
         &previous_items,
     )
-    // .add_item(
-    //     "Master Volume",
-    //     (
-    //         make_audio_slider(get_master, set_master, Some(0.7)),
-    //         MenuToggle::new(
-    //             get_master_muted,
-    //             set_master_muted,
-    //         ),
-    //     ),
-    //     VolumeMenuActions::MainVolumeSlider,
-    // )
-    // .add_item(
-    //     "Music Volume",
-    //     (
-    //         make_audio_slider(get_music, set_music, Some(0.5)),
-    //         MenuToggle::new(
-    //             get_music_muted,
-    //             set_music_muted,
-    //         ),
-    //     ),
-    //     VolumeMenuActions::MusicVolumeSlider,
-    // )
-    // .add_item(
-    //     "Effects Volume",
-    //     (
-    //         make_audio_slider(get_effects, set_effects, Some(0.7)),
-    //         MenuToggle::new(
-    //             get_effects_muted,
-    //             set_effects_muted,
-    //         ),
-    //     ),
-    //     VolumeMenuActions::EffectsVolumeSlider,
-    // )
-    // .add_item(
-    //     "Gameplay Volume",
-    //     (
-    //         make_audio_slider(get_gameplay, set_gameplay, Some(1.0)),
-    //         MenuToggle::new(
-    //             get_gameplay_muted,
-    //             set_gameplay_muted,
-    //         ),
-    //     ),
-    //     VolumeMenuActions::GameplayVolumeSlider,
-    // )
-    // .add_item(
-    //     "Ambient Volume",
-    //     (
-    //         make_audio_slider(get_ambient, set_ambient, Some(0.5)),
-    //         MenuToggle::new(
-    //             get_ambient_muted,
-    //             set_ambient_muted,
-    //         ),
-    //     ),
-    //     VolumeMenuActions::AmbientVolumeSlider,
-    // )
+    .add_item(
+        "Master Volume",
+        (
+            make_audio_slider(get_master, set_master, Some(0.7)),
+            MenuToggle::new(
+                get_master_muted,
+                set_master_muted,
+            ),
+        ),
+        VolumeMenuActions::MainVolumeSlider,
+    )
+    .add_item(
+        "Music Volume",
+        (
+            make_audio_slider(get_music, set_music, Some(0.5)),
+            MenuToggle::new(
+                get_music_muted,
+                set_music_muted,
+            ),
+        ),
+        VolumeMenuActions::MusicVolumeSlider,
+    )
+    .add_item(
+        "Effects Volume",
+        (
+            make_audio_slider(get_effects, set_effects, Some(0.7)),
+            MenuToggle::new(
+                get_effects_muted,
+                set_effects_muted,
+            ),
+        ),
+        VolumeMenuActions::EffectsVolumeSlider,
+    )
+    .add_item(
+        "Gameplay Volume",
+        (
+            make_audio_slider(get_gameplay, set_gameplay, Some(1.0)),
+            MenuToggle::new(
+                get_gameplay_muted,
+                set_gameplay_muted,
+            ),
+        ),
+        VolumeMenuActions::GameplayVolumeSlider,
+    )
     .add_item("Back", (), SimpleMenuActions::Back)
     .finish(&mut previous_items);
 }

@@ -16,6 +16,7 @@ use image::imageops::FilterType;
 use crate::PlayerStart;
 use crate::Shake;
 use crate::Spawning;
+use crate::audio::MusicAssets;
 use crate::lifecycle::PauseState;
 use crate::states_sets::GameplayState;
 use crate::states_sets::LevelState;
@@ -42,7 +43,7 @@ impl Plugin for WorldStatePlugin {
                     .load_collection::<SkyboxAssets>()
                     // .load_collection::<SoundFxAssets>()
                     // .load_collection::<VoiceAssets>()
-                    // .load_collection::<MusicAssets>()
+                    .load_collection::<MusicAssets>()
                     // .load_collection::<IconAssets>()
                     .load_collection::<MapAssets>()
             )

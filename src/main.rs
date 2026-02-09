@@ -47,7 +47,7 @@ use bevy::camera::visibility::RenderLayers;
 use bevy::window::PrimaryWindow;
 use bevy::window::WindowMode;
 use bevy::{
-    asset::AssetMetaCheck, camera::visibility::NoFrustumCulling, dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin}, gltf::GltfMeshName, image::{ImageAddressMode, ImageSamplerDescriptor}, prelude::*, scene::SceneInstanceReady, winit::WinitSettings
+    asset::AssetMetaCheck, camera::visibility::NoFrustumCulling, dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin}, gltf::GltfMeshName, image::{ImageAddressMode, ImageSamplerDescriptor}, scene::SceneInstanceReady, winit::WinitSettings
 };
 use bevy_egui::{
     EguiGlobalSettings, EguiPlugin,
@@ -180,6 +180,19 @@ fn main() {
             check_windows_closed.in_set(MessageUpdateSystems),
         ).chain())
 
+        //////
+
+        .add_plugins(ActionPlugin)
+        .add_plugins(MenuPlugin)
+
+        .add_plugins(LifecyclePlugin)
+        // .add_plugins(LevelStatePlugin)
+        .add_plugins(GuiPlugin)
+        .add_plugins(WorldUiPlugin)
+        .add_plugins(WorldStatePlugin)
+        .add_plugins(DebugPlugin)
+        .add_plugins(AudioPlugin)
+
         .add_systems(OnEnter(ProgramState::Initializing),
             on_enter_initializing
         )
@@ -213,16 +226,6 @@ fn main() {
         .add_systems(OnEnter(ProgramState::LaunchMenu),
             hide_3d_camera, //.in_set(SimulationSystems),
         )
-
-        .add_plugins(ActionPlugin)
-        .add_plugins(MenuPlugin)
-
-        .add_plugins(LifecyclePlugin)
-        // .add_plugins(LevelStatePlugin)
-        .add_plugins(GuiPlugin)
-        .add_plugins(WorldUiPlugin)
-        .add_plugins(WorldStatePlugin)
-        .add_plugins(DebugPlugin)
 
         .insert_resource(VideoSettings::default())
 
