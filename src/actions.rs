@@ -178,7 +178,7 @@ pub fn default_input_map() -> InputMap<UserAction> {
 
     input_map.insert(TogglePause, KeyCode::Pause);
     input_map.insert(TogglePause, ButtonlikeChord::new([CTRL_COMMAND, KeyCode::KeyP])); // "P"ause
-    input_map.insert(ToggleMute, KeyCode::AudioVolumeMute);
+    input_map.insert(ToggleMute, KeyCode::F12);
     input_map.insert(ToggleMute, ButtonlikeChord::new([CTRL_COMMAND, KeyCode::KeyM])); // "M"ute
     input_map.insert(ToggleFullScreen, KeyCode::F11);
 

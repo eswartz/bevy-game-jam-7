@@ -1,23 +1,23 @@
-mod debug;
-mod audio;
-mod states_sets;
-mod menus_common;
 mod actions;
-mod lifecycle;
-mod menus;
-mod product;
+mod audio;
+mod debug;
 mod gui;
+mod lifecycle;
+mod markers;
+mod menus;
+mod menus_common;
+mod product;
+mod states_sets;
+mod texutils;
 mod video;
 mod world_state;
 mod world_ui;
-mod markers;
-mod texutils;
 // mod level_state;
 
 use crate::actions::ActionPlugin;
 use crate::actions::UserAction;
-use crate::debug::*;
 use crate::audio::*;
+use crate::debug::*;
 use crate::gui::GuiPlugin;
 use crate::lifecycle::LifecyclePlugin;
 use crate::lifecycle::PauseState;
@@ -34,28 +34,34 @@ use crate::world_ui::WorldUiPlugin;
 use std::time::Duration;
 
 use avian3d::prelude::*;
+use bevy::camera::Exposure;
+use bevy::camera::visibility::RenderLayers;
 use bevy::core_pipeline::oit::OrderIndependentTransparencySettings;
+use bevy::core_pipeline::prepass::DepthPrepass;
 use bevy::ecs::message::MessageUpdateSystems;
 use bevy::prelude::*;
-use bevy::camera::Exposure;
-use bevy::core_pipeline::prepass::DepthPrepass;
 use bevy::render::renderer::RenderAdapter;
 use bevy::render::renderer::RenderDevice;
 use bevy::render::view::Hdr;
-use bevy_asset_loader::prelude::*;
-use bevy::camera::visibility::RenderLayers;
 use bevy::window::PrimaryWindow;
 use bevy::window::WindowMode;
 use bevy::{
-    asset::AssetMetaCheck, camera::visibility::NoFrustumCulling, dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin}, gltf::GltfMeshName, image::{ImageAddressMode, ImageSamplerDescriptor}, scene::SceneInstanceReady, winit::WinitSettings
+    asset::AssetMetaCheck,
+    camera::visibility::NoFrustumCulling,
+    dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
+    gltf::GltfMeshName,
+    image::{ImageAddressMode, ImageSamplerDescriptor},
+    scene::SceneInstanceReady,
+    winit::WinitSettings,
 };
-use bevy_egui::{
-    EguiGlobalSettings, EguiPlugin,
-};
+use bevy_asset_loader::prelude::*;
+use bevy_egui::input::egui_wants_any_input;
+use bevy_egui::input::egui_wants_any_keyboard_input;
+use bevy_egui::{EguiGlobalSettings, EguiPlugin};
 use bevy_seedling::SeedlingPlugin;
+use bevy_seedling::prelude::MainBus;
 use bevy_skein::SkeinPlugin;
 use leafwing_input_manager::prelude::ActionState;
-
 
 #[derive(Component, Reflect, Default)]
 #[reflect(Component, Default)]
@@ -108,49 +114,43 @@ fn main() {
             )),
         })
         .add_plugins((
-            DefaultPlugins.set(AssetPlugin {
-                // Wasm builds will check for meta files (that don't exist) if this isn't set.
-                // This causes errors and even panics in web builds on itch.
-                // See https://github.com/bevyengine/bevy_github_ci_template/issues/48.
-                meta_check: AssetMetaCheck::Never,
-                watch_for_changes_override: Some(true),
-                ..default()
-            })
-            .set(ImagePlugin {
-                default_sampler: ImageSamplerDescriptor {
-                    address_mode_u: ImageAddressMode::Repeat,
-                    address_mode_v: ImageAddressMode::Repeat,
-                    address_mode_w: ImageAddressMode::Repeat,
-                    ..ImageSamplerDescriptor::linear()
-                },
-            })
-            ,
+            DefaultPlugins
+                .set(AssetPlugin {
+                    // Wasm builds will check for meta files (that don't exist) if this isn't set.
+                    // This causes errors and even panics in web builds on itch.
+                    // See https://github.com/bevyengine/bevy_github_ci_template/issues/48.
+                    meta_check: AssetMetaCheck::Never,
+                    watch_for_changes_override: Some(true),
+                    ..default()
+                })
+                .set(ImagePlugin {
+                    default_sampler: ImageSamplerDescriptor {
+                        address_mode_u: ImageAddressMode::Repeat,
+                        address_mode_v: ImageAddressMode::Repeat,
+                        address_mode_w: ImageAddressMode::Repeat,
+                        ..ImageSamplerDescriptor::linear()
+                    },
+                }),
             SkeinPlugin::default(),
             PhysicsPlugins::default(),
         ))
         .add_plugins(avian3d::debug_render::PhysicsDebugPlugin::default()) // show colliders
-
         ////////
-
         .insert_state(ProgramState::default())
         .insert_state(GameplayState::default())
         .insert_state(OverlayState::default())
-
         //////
-
-        .add_systems(First,
+        .add_systems(
+            First,
             (
                 bevy::dev_tools::states::log_transitions::<ProgramState>,
                 bevy::dev_tools::states::log_transitions::<GameplayState>,
                 bevy::dev_tools::states::log_transitions::<OverlayState>,
-            )
+            ),
         )
-
         .add_loading_state(
-            LoadingState::new(ProgramState::Initializing)
-                .continue_to_state(ProgramState::New)
+            LoadingState::new(ProgramState::Initializing).continue_to_state(ProgramState::New),
         )
-
         //////
         .add_plugins(EguiPlugin::default())
         .insert_resource(EguiGlobalSettings {
@@ -168,23 +168,21 @@ fn main() {
             },
         )
         ////////
-
         .add_plugins(SeedlingPlugin::default())
         .add_systems(OnEnter(ProgramState::InGame), initialize_audio)
-
         ////////
-
         // Custom exit handling.
-        .add_systems(First, (
-            check_app_exit.in_set(MessageUpdateSystems),
-            check_windows_closed.in_set(MessageUpdateSystems),
-        ).chain())
-
+        .add_systems(
+            First,
+            (
+                check_app_exit.in_set(MessageUpdateSystems),
+                check_windows_closed.in_set(MessageUpdateSystems),
+            )
+                .chain(),
+        )
         //////
-
         .add_plugins(ActionPlugin)
         .add_plugins(MenuPlugin)
-
         .add_plugins(LifecyclePlugin)
         // .add_plugins(LevelStatePlugin)
         .add_plugins(GuiPlugin)
@@ -192,49 +190,32 @@ fn main() {
         .add_plugins(WorldStatePlugin)
         .add_plugins(DebugPlugin)
         .add_plugins(AudioPlugin)
-
-        .add_systems(OnEnter(ProgramState::Initializing),
-            on_enter_initializing
+        .add_systems(OnEnter(ProgramState::Initializing), on_enter_initializing)
+        .add_systems(
+            OnEnter(ProgramState::New),
+            (on_enter_loading, init_perf_ui).chain(),
         )
-        .add_systems(OnEnter(ProgramState::New),
-            (
-                on_enter_loading,
-                init_perf_ui,
-            )
-            .chain()
+        .add_systems(
+            OnEnter(ProgramState::LaunchMenu),
+            (on_enter_launch_menu,).chain(),
         )
-        .add_systems(OnEnter(ProgramState::LaunchMenu),
-            (
-                on_enter_launch_menu,
-            )
-            .chain()
+        .add_systems(
+            OnEnter(ProgramState::InGame),
+            (on_exit_launch_menu, on_enter_in_game).chain(),
         )
-        .add_systems(OnEnter(ProgramState::InGame),
-            (
-                on_exit_launch_menu,
-                on_enter_in_game,
-            )
-            .chain()
+        .add_systems(
+            OnEnter(ProgramState::InGame),
+            (ensure_3d_camera, show_3d_camera),
         )
-
-        .add_systems(OnEnter(ProgramState::InGame),
-            (
-                ensure_3d_camera,
-                show_3d_camera,
-            )
-        )
-        .add_systems(OnEnter(ProgramState::LaunchMenu),
+        .add_systems(
+            OnEnter(ProgramState::LaunchMenu),
             hide_3d_camera, //.in_set(SimulationSystems),
         )
-
         .insert_resource(VideoSettings::default())
-
         ////////
-
         .init_state::<GameplayState>()
         .init_state::<LevelState>()
         .insert_resource(ProductName(PRODUCT_NAME.to_string()))
-
         .insert_resource(PauseState::new(false))
         .insert_resource(Spawning(false))
         .insert_resource(Base(Entity::PLACEHOLDER, Transform::IDENTITY))
@@ -246,23 +227,27 @@ fn main() {
             (setup_egui_style, ensure_egui_context)
                 .chain()
                 .run_if(egui_not_initialized)
-                .run_if(in_state(GameplayState::Playing))
-                ,
+                .run_if(in_state(GameplayState::Playing)),
         )
-        .add_systems(Update, (
-            check_ball_death, shake_base,
-        ).run_if(in_state(LevelState::Playing)))
-        .add_systems(PostUpdate, (
-            spawn_ball,
-        ).run_if(in_state(LevelState::Playing)))
-
-        .add_systems(Update,
-            (
-                process_global_actions,
-                check_actions,
-            ).run_if(in_state(LevelState::Playing))
+        .add_systems(
+            Update,
+            (check_ball_death,).run_if(in_state(LevelState::Playing)),
         )
-
+        .add_systems(
+            Update,
+            (shake_base, check_actions)
+                .run_if(in_state(LevelState::Playing))
+                .run_if(not(egui_wants_any_keyboard_input)),
+        )
+        .add_systems(
+            PostUpdate,
+            (spawn_ball,).run_if(in_state(LevelState::Playing)),
+        )
+        .add_systems(
+            Update,
+            (process_global_actions, )
+                .run_if(in_state(LevelState::Playing))
+        )
         .run();
 }
 
@@ -285,7 +270,7 @@ fn init_3d_camera(mut commands: Commands, use_clustered: bool) {
 
 fn ensure_3d_camera(
     mut commands: Commands,
-    camera_q: Query<Entity/* , With<OurCamera> */>,
+    camera_q: Query<Entity /* , With<OurCamera> */>,
     render_device: Res<RenderDevice>,
     render_adapter: Res<RenderAdapter>,
 ) {
@@ -303,7 +288,7 @@ fn setup_3d_camera(mut ent_commands: EntityCommands, use_clustered: bool) {
     info!("Setting up camera");
     ent_commands.insert((
         Camera3d::default(),
-        Exposure{ ev100: 10.0 },
+        Exposure { ev100: 10.0 },
         Camera {
             clear_color: Color::BLACK.into(),
             ..default()
@@ -323,13 +308,13 @@ fn setup_3d_camera(mut ent_commands: EntityCommands, use_clustered: bool) {
     }
 }
 
-fn show_3d_camera(mut camera_q: Query<&mut Camera, (With<Camera3d>, /* With<OurCamera> */)>) {
+fn show_3d_camera(mut camera_q: Query<&mut Camera, (With<Camera3d> /* With<OurCamera> */,)>) {
     if let Ok(mut camera) = camera_q.single_mut() {
         camera.is_active = true;
     }
 }
 
-fn hide_3d_camera(mut camera_q: Query<&mut Camera, (With<Camera3d>, /* With<OurCamera> */)>) {
+fn hide_3d_camera(mut camera_q: Query<&mut Camera, (With<Camera3d> /* With<OurCamera> */,)>) {
     if let Ok(mut camera) = camera_q.single_mut() {
         camera.is_active = false;
     }
@@ -367,11 +352,7 @@ fn check_windows_closed(windows: Query<&Window>, mut commands: Commands) {
     }
 }
 
-
-fn on_enter_initializing(
-    mut commands: Commands,
-    camera_q: Query<&Camera, With<Camera2d>>,
-) {
+fn on_enter_initializing(mut commands: Commands, camera_q: Query<&Camera, With<Camera2d>>) {
     if camera_q.single().is_err() {
         commands.spawn((
             Camera2d,
@@ -606,7 +587,7 @@ fn process_global_actions(
     overlay_state: Res<State<OverlayState>>,
     mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
     mut pause_state: ResMut<PauseState>,
-    // mut audio: Audio,
+    mut vol_q: Single<&mut UserVolume, With<MainBus>>,
 ) {
     if action_state.just_pressed(&UserAction::ToggleMenu) {
         match overlay_state.get() {
@@ -675,9 +656,7 @@ fn process_global_actions(
             }
         };
     }
-    // if action_state.just_pressed(&UserAction::ToggleMute) {
-    //     let was_muted = audio.is_muted();
-    //     audio.set_muted(!was_muted);
-    // }
-
+    if action_state.just_pressed(&UserAction::ToggleMute) {
+        vol_q.muted = !vol_q.muted;
+    }
 }

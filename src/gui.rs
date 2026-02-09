@@ -7,7 +7,10 @@ use bevy::window::PrimaryWindow;
 use bevy::window::WindowFocused;
 use bevy_asset_loader::prelude::*;
 use bevy_inspector_egui::DefaultInspectorConfigPlugin;
+use bevy_seedling::prelude::MainBus;
 
+use crate::audio::UserVolume;
+use crate::lifecycle::PauseState;
 use crate::states_sets::OverlayState;
 use crate::states_sets::ProgramState;
 use crate::world_state::SkyboxModel;
@@ -35,7 +38,7 @@ impl Plugin for GuiPlugin {
                 check_gui_state,    // initialize
                 ensure_font_assets,
                 grab_cursor_for_game,
-                // setup_gui_nodes,
+                setup_gui_nodes,
                 // (
                 //     ensure_egui_context,
                 //     setup_egui_style,
@@ -88,8 +91,8 @@ impl Plugin for GuiPlugin {
                 // ).chain(),
                 // update_debug_status,
                 check_grab_focus_state,
-                // update_pause_ui,
-                // update_mute_ui,
+                update_pause_ui,
+                update_mute_ui,
             )
             // .in_set(InteractionSystems)
             .run_if(in_state(ProgramState::InGame))
@@ -108,8 +111,8 @@ impl Plugin for GuiPlugin {
 pub struct GuiAssets {
     #[asset(path = "fonts/Recursive-Bold.ttf")]
     pub std_ui: Handle<Font>,
-    // #[asset(path = "fonts/emoji-icon-font.ttf")]
-    // pub emoji: Handle<Font>,
+    #[asset(path = "fonts/emoji-icon-font.ttf")]
+    pub emoji: Handle<Font>,
     // #[asset(path = "textures/crosshair.png")]
     // pub crosshair: Handle<Image>,
 }
@@ -298,6 +301,103 @@ fn check_grab_focus_state(
             // Release mouse, if captured
             cursor_options.grab_mode = CursorGrabMode::None;
             cursor_options.visible = true;
+        }
+    }
+}
+
+#[derive(Component)]
+struct Info;
+
+#[derive(Component)]
+struct PauseArea;
+
+#[derive(Component)]
+struct MuteArea;
+
+fn setup_gui_nodes(
+    mut commands: Commands,
+    gui_assets: Res<GuiAssets>,
+) {
+    // Info
+    commands.spawn((
+        DespawnOnExit(ProgramState::InGame),
+        Info,
+        Text::new(""),
+        TextFont {
+            font: gui_assets.emoji.clone(),
+            font_size: 10.0,
+            ..default()
+        },
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(12.0),
+            left: Val::Px(12.0),
+            ..default()
+        },
+    ));
+
+    // Pause icon in upper right
+    commands.spawn((
+        DespawnOnExit(ProgramState::InGame),
+        PauseArea,
+        Visibility::Visible,
+        TextFont {
+            font: gui_assets.emoji.clone(),
+            font_size: 32.0,
+            .. default()
+        },
+        TextColor(Color::Srgba(tailwind::YELLOW_300)),
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(4.0),
+            right: Val::Px(4.0),
+            .. default()
+        },
+        Text::new(""),
+    ));
+
+    // Mute icon in upper right
+    commands.spawn((
+        DespawnOnExit(ProgramState::InGame),
+        MuteArea,
+        Visibility::Visible,
+        TextFont {
+            font: gui_assets.emoji.clone(),
+            font_size: 32.0,
+            .. default()
+        },
+        TextColor(Color::Srgba(tailwind::YELLOW_300)),
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(4.0),
+            right: Val::Px(36.0),
+            .. default()
+        },
+        Text::new(""),
+    ));
+
+}
+
+fn update_pause_ui(
+    paused: Res<PauseState>,
+    mut text_q: Query<&mut Text, With<PauseArea>>,
+) {
+    if let Ok(mut text) = text_q.single_mut() {
+        let new_text = if paused.is_paused() { "\u{1F6AB}" } else { " " };
+        if new_text != text.0 {
+            text.0 = new_text.to_string();
+        }
+    }
+}
+
+fn update_mute_ui(
+    vol_q: Single<&UserVolume, With<MainBus>>,
+    mut text_q: Query<&mut Text, With<MuteArea>>,
+) {
+    if let Ok(mut text) = text_q.single_mut() {
+        let new_text = if vol_q.muted { "\u{1F508}" } else { " " };
+        if new_text != text.0 {
+            text.0 = new_text.to_string();
         }
     }
 }
