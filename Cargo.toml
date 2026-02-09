@@ -3,52 +3,6 @@ name = "skein-test"
 version = "0.1.0"
 edition = "2024"
 
-[patch.crates-io]
-# bevy = { path = "../bevy-fork" }
-bevy = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-gltf = { git = "https://github.com/gltf-rs/gltf.git", branch = "main" }
-
-bevy_math = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_ecs = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_internal = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-
-bevy_reflect = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_app = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_color = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_log = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_platform = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_render = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_utils = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-
-bevy_asset = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_mesh = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_image = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_text = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_shader = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_core_pipeline = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_camera = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_sprite = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_picking = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_light = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_gizmos = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_sprite_render = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_ui = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_ui_render = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_pbr = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_transform = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_window = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_input = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_input_focus = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_winit = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_gltf = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_tasks = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_scene = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_remote = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_time = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-bevy_diagnostic = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
-
-avian3d = { git = "https://github.com/avianphysics/avian", branch = "main" }
-
 [dependencies]
 bevy = { version = "0.18.0", default-features = false, features = [
     # 3d without sound.
@@ -68,6 +22,7 @@ bevy = { version = "0.18.0", default-features = false, features = [
     "bevy_remote",
     "jpeg",
     "webp",
+    "exr",
     "track_location",
     "asset_processor",
     "experimental_pbr_pcss",
@@ -114,6 +69,24 @@ bevy_seedling = { version = "0.7.0", default-features = false, features = [
     "stream", "wav", "ogg", "rand", "loudness", "reflect",
     "hrtf",
 ] }
+rustc-hash = "2.1.1"
+
+leafwing-input-manager = { version = "0.20" }
+strum = { version = "0.27.2", features = ["derive", "strum_macros"] }
+strum_macros = "0.27.2"
+
+bevy_asset_loader = { version = "0.25.0", features = [
+    "2d",
+    "3d",
+    # "progress_tracking",
+] }
+serde = { version = "1.0", features = ["alloc", "derive", "serde_derive"] }
+rand = "0.10.0"
+
+image = { version = "0.25", default-features = false }
+wgpu = "27.0.1"
+bytemuck = "1.25.0"
+anyhow = "1.0.101"
 
 # Idiomatic Bevy code often triggers these lints, and the CI workflow treats them as errors.
 # In some cases they may still signal poor code quality however, so consider commenting out these lines.

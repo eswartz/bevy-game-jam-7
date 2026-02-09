@@ -1,0 +1,779 @@
+use bevy::camera::visibility::RenderLayers;
+use bevy::ecs::world::CommandQueue;
+use bevy::prelude::*;
+use bevy::sprite::Text2dShadow;
+// use bevy_pretty_text::prelude::*;
+use strum::VariantArray;
+
+use crate::ExitRequest;
+use crate::gui::GuiAssets;
+use crate::lifecycle::PauseState;
+use crate::product::ProductName;
+
+use crate::menus_common::*;
+use crate::states_sets::*;
+use crate::video::*;
+
+pub struct MenuPlugin;
+impl Plugin for MenuPlugin {
+    fn build(&self, app: &mut App) {
+        app
+            // .add_plugins(MaterialPlugin::<ExtendedMaterial<StandardMaterial, TitleShader>>::default())
+            // .add_plugins(Text3dPlugin {
+            //     default_atlas_dimension: (1024, 512),
+            //     load_system_fonts: false,
+            //     ..default()
+            // })
+            // .register_pretty_material::<TitleShader>("title_shader")
+            // .register_asset_reflect::<TitleShader>()
+            // .add_plugins(PrettyTextPlugin)
+            //     font_paths: vec![
+            //         GuiAssets::STD_UI_FONT_PATH.into(),
+            //     ],
+            //     ..default()
+            // })
+            .add_plugins(MenuCommonPlugin)
+            .add_systems(OnEnter(OverlayState::MainMenu), on_enter_main_menu)
+            .add_systems(OnEnter(OverlayState::EscapeMenu), on_enter_escape_menu)
+            .add_systems(OnExit(OverlayState::EscapeMenu), on_exit_escape_menu)
+            .add_systems(OnEnter(OverlayState::GameMenu), on_enter_game_menu)
+            .add_systems(OnEnter(OverlayState::OptionsMenu), on_enter_options_menu)
+            .add_systems(OnEnter(OverlayState::AudioMenu), on_enter_audio_menu)
+            .add_systems(OnEnter(OverlayState::VideoMenu), on_enter_video_menu)
+            .add_systems(OnEnter(OverlayState::ControlsMenu), on_enter_controls_menu)
+            ;
+    }
+}
+
+#[derive(Debug)]
+pub(crate) enum SimpleMenuActions {
+    PlayGame,
+    GameMenu,
+    OptionsMenu,
+    AudioMenu,
+    VideoMenu,
+    ControlsMenu,
+    Quit,
+    Back,
+    ResumeGame,
+    StopGame,
+}
+
+impl MenuItemHandler for SimpleMenuActions {
+    fn handle(&mut self, world: &mut World, event: &MenuActionMessage) {
+        let program_state = *world.get_resource::<State<ProgramState>>().unwrap().get();
+        let mut queue = CommandQueue::default();
+        let mut commands = Commands::new(&mut queue, world);
+        match event {
+            MenuActionMessage::Activate(_) | MenuActionMessage::Next(_) => match self {
+                SimpleMenuActions::PlayGame => {
+                    start_game(commands.reborrow());
+                }
+                SimpleMenuActions::GameMenu => {
+                    commands.set_state(OverlayState::GameMenu);
+                }
+                SimpleMenuActions::OptionsMenu => {
+                    commands.set_state(OverlayState::OptionsMenu);
+                }
+                SimpleMenuActions::AudioMenu => {
+                    commands.set_state(OverlayState::AudioMenu);
+                }
+                SimpleMenuActions::VideoMenu => {
+                    commands.set_state(OverlayState::VideoMenu);
+                }
+                SimpleMenuActions::ControlsMenu => {
+                    commands.set_state(OverlayState::ControlsMenu);
+                }
+                SimpleMenuActions::Quit => {
+                    commands.insert_resource(ExitRequest);
+                }
+                SimpleMenuActions::Back => {
+                    if program_state == ProgramState::InGame {
+                        commands.set_state(OverlayState::EscapeMenu);
+                    } else {
+                        commands.set_state(OverlayState::MainMenu);
+                    }
+                }
+                SimpleMenuActions::ResumeGame => {
+                    let mut paused = world.get_resource::<PauseState>().cloned().unwrap_or_default();
+                    paused.set_menu_paused(false);
+                    commands.insert_resource(paused);
+                    commands.set_state(OverlayState::Hidden);
+                }
+                SimpleMenuActions::StopGame => {
+                    let mut paused = world.get_resource::<PauseState>().cloned().unwrap_or_default();
+                    paused.set_menu_paused(false);
+                    commands.insert_resource(paused);
+                    commands.set_state(OverlayState::Hidden);
+                    commands.set_state(ProgramState::LaunchMenu);
+                    commands.set_state(GameplayState::New);
+                    // commands.insert_resource(DisconnectFromServer);
+                }
+            },
+            MenuActionMessage::Reset(_) => return,
+            MenuActionMessage::Previous(_) => return,
+            MenuActionMessage::Slide(..) => return,
+        }
+        queue.apply(world);
+    }
+}
+
+
+// impl bevy_pretty_text::prelude::GlyphMaterial for TitleShader {
+//     fn fragment_shader() -> ShaderRef {
+//         ShaderRef::Path("shaders/title.wgsl".into())
+//         // ShaderRef::Default
+//     }
+// }
+
+fn on_enter_main_menu(
+    mut commands: Commands,
+    fonts: Res<GuiAssets>,
+    mut previous_items: ResMut<PreviousMenuItems>,
+    // mut glyph_mats: ResMut<Assets<TitleShader>>,
+    product_name: Res<ProductName>,
+) {
+    commands.spawn((
+        DespawnOnExit(OverlayState::MainMenu),
+        Text2d::new(&product_name.0),
+        TextFont {
+            font_size: 128.0,
+            font: fonts.std_ui.clone(),
+            ..default()
+        },
+        Text2dShadow{
+            offset: Vec2::new(16.0, 16.0),
+            color: Color::BLACK,
+            ..default()
+        },
+        // bevy_pretty_text::prelude::Typewriter::new(30.),
+        // bevy_pretty_text::prelude::Breathe {
+        //     min: 0.975,
+        //     max: 1.025,
+        //     ..default()
+        // },
+        // PrettyTextMaterial(glyph_mats.add(TitleShader::default())),
+        RenderLayers::layer(1),
+        Transform::from_xyz(0., 300.0, 0.),
+    ));
+    commands.spawn((
+        DespawnOnExit(OverlayState::MainMenu),
+        Camera3d::default(),
+        Camera {
+            is_active: true,
+            order: -2,
+            clear_color: Color::NONE.into(),
+            ..default()
+        },
+        Projection::Orthographic(OrthographicProjection{
+            scaling_mode: bevy::camera::ScalingMode::FixedVertical{ viewport_height: 1000.0 },
+            ..OrthographicProjection::default_3d()
+        }),
+        Transform::from_translation(Vec3::new(0., 0., 1.))
+            .looking_at(Vec3::new(0., 0., 0.), Vec3::Y),
+        RenderLayers::layer(1),
+    ));
+
+    MenuItemBuilder::new(
+        commands,
+        OverlayState::MainMenu,
+        ProgramState::LaunchMenu,
+        fonts.std_ui.clone(),
+        1.0,
+        &previous_items,
+    )
+    .add_item("Play", (), SimpleMenuActions::PlayGame)
+    // .add_item("Game", (), SimpleMenuActions::GameMenu)
+    .add_item("Options", (), SimpleMenuActions::OptionsMenu)
+    .add_item("Quit", (), SimpleMenuActions::Quit)
+    .finish(&mut previous_items);
+
+}
+
+
+// #[derive(Default, Debug, Clone, AsBindGroup, Asset, Reflect, Component, DynamicEffect)]
+// #[require(PrettyText)]
+// pub struct TitleShader {
+//     // #[uniform(100)]
+//     pub frequency: f32,
+//     // #[uniform(101)]
+//     pub intensity: f32,
+// }
+
+// impl MaterialExtension for TitleShader {
+//     fn vertex_shader() -> ShaderRef {
+//         ShaderRef::Path("shaders/title.wgsl".into())
+//     }
+//     fn fragment_shader() -> ShaderRef {
+//         ShaderRef::Path("shaders/title.wgsl".into())
+//     }
+// }
+
+fn on_enter_game_menu(
+    fonts: Res<GuiAssets>,
+    program_state: Res<State<ProgramState>>,
+    mut commands: Commands,
+    mut previous_items: ResMut<PreviousMenuItems>,
+    // level_regy: Res<LevelRegistry>,
+) {
+    macro_rules! make_res_enum_getter_setter {
+        ($getter:ident $setter:ident => $enum:ident $res:ident $field:tt) => {
+            let $getter = commands.register_system(IntoSystem::into_system(|
+                In(entity): In<Entity>, mut enum_q: Query<&mut MenuEnum>, res: Res<$res>| {
+                enum_q.get_mut(entity).unwrap().current = Some($enum::VARIANTS.iter().position(|e| *e == res.$field).unwrap());
+            }));
+            let $setter = commands.register_system(IntoSystem::into_system(
+                |In(v): In<usize>, mut res: ResMut<$res>| {
+                    res.$field = $enum::VARIANTS[v];
+                },
+            ));
+        };
+    }
+
+    // make_res_enum_getter_setter!(get_difficulty set_difficulty => Difficulty LevelDifficulty 0);
+
+    // fn get_level(In(entity): In<Entity>, mut enum_q: Query<&mut MenuEnum>, next_level_index: Option<Res<NextLevelIndex>>) {
+    //     let index = next_level_index.map_or(0, |nli| nli.0);
+    //     enum_q.get_mut(entity).unwrap().current = Some(index);
+    // }
+    // fn set_level(In(v): In<usize>, mut commands: Commands) {
+    //     commands.insert_resource(NextLevelIndex(v));
+    // }
+    // let get_level = commands.register_system(IntoSystem::into_system(get_level));
+    // let set_level = commands.register_system(IntoSystem::into_system(set_level));
+
+    // let level_ids = level_regy.get_level_ids();
+    // let level_count = level_ids.len();
+    // let level_names = level_ids.iter().map(|id| level_regy.level_name(id)).collect::<Vec<_>>();
+
+    MenuItemBuilder::new(
+        commands,
+        OverlayState::GameMenu,
+        *program_state.get(),
+        fonts.std_ui.clone(),
+        1.0,
+        &previous_items,
+    )
+    // .add_item(
+    //     "Level",
+    //     MenuEnum::new(
+    //         get_level,
+    //         set_level,
+    //         move || level_count,
+    //         move |index| level_names[index].clone(),
+    //     ),
+    //     EnumMenuActions::SelectStartLevelEnum,
+    // )
+    // .add_item(
+    //     "Difficulty",
+    //     MenuEnum::new(
+    //         get_difficulty,
+    //         set_difficulty,
+    //         || Difficulty::VARIANTS.len(),
+    //         |index| Difficulty::VARIANTS[index].to_string(),
+    //     ),
+    //     EnumMenuActions::DifficultyEnum,
+    // )
+    .add_item("Back", (), SimpleMenuActions::Back)
+    .finish(&mut previous_items);
+}
+
+fn on_enter_options_menu(
+    fonts: Res<GuiAssets>,
+    commands: Commands,
+    program_state: Res<State<ProgramState>>,
+    mut previous_items: ResMut<PreviousMenuItems>,
+) {
+    MenuItemBuilder::new(
+        commands,
+        OverlayState::OptionsMenu,
+        *program_state.get(),
+        fonts.std_ui.clone(),
+        1.0,
+        &previous_items,
+    )
+    .add_item("Audio", (), SimpleMenuActions::AudioMenu)
+    .add_item("Video", (), SimpleMenuActions::VideoMenu)
+    .add_item("Controls", (), SimpleMenuActions::ControlsMenu)
+    .add_item("Back", (), SimpleMenuActions::Back)
+    .finish(&mut previous_items);
+}
+
+fn on_enter_escape_menu(
+    fonts: Res<GuiAssets>,
+    commands: Commands,
+    mut previous_items: ResMut<PreviousMenuItems>,
+    // level_regy: Res<LevelRegistry>,
+    // level_id: Res<LevelId>,
+) {
+    MenuItemBuilder::new(
+        commands,
+        OverlayState::EscapeMenu,
+        ProgramState::InGame,
+        fonts.std_ui.clone(),
+        1.0,
+        &previous_items,
+    )
+    // .add_item(format!("Resume ({})", level_regy.level_name(&level_id.0)),
+        // (), SimpleMenuActions::ResumeGame)
+    .add_item("Audio", (), SimpleMenuActions::AudioMenu)
+    .add_item("Video", (), SimpleMenuActions::VideoMenu)
+    .add_item("Controls", (), SimpleMenuActions::ControlsMenu)
+    .add_item("Stop", (), SimpleMenuActions::StopGame)
+    .finish(&mut previous_items);
+}
+
+fn on_exit_escape_menu(
+) {
+}
+
+
+#[derive(Debug, Clone)]
+pub(crate) enum SliderMenuActions {
+    FovSlider,
+    MoveSensitivityXSlider,
+    MoveSensitivityYSlider,
+    MoveSensitivityZSlider,
+    TurnSensitivityXSlider,
+    TurnSensitivityYSlider,
+    TurnSensitivityZSlider,
+    ZoomSensitivityYSlider,
+}
+
+impl MenuItemHandler for SliderMenuActions {}
+
+#[derive(Debug, Clone)]
+pub(crate) enum EnumMenuActions {
+    DifficultyEnum,
+    SelectStartLevelEnum,
+    AntialiasingEnum,
+    MeshQualityEnum,
+    TextureQualityEnum,
+    GlassQualityEnum,
+}
+
+impl MenuItemHandler for EnumMenuActions {
+    fn handle(&mut self, world: &mut World, event: &MenuActionMessage) {
+        let mut queue = CommandQueue::default();
+        let mut commands = Commands::new(&mut queue, world);
+        if let MenuActionMessage::Activate(_) = event && let EnumMenuActions::SelectStartLevelEnum = self {
+            start_game(commands.reborrow());
+        }
+        queue.apply(world);
+    }
+}
+
+
+#[derive(Debug, Clone)]
+pub(crate) enum VolumeMenuActions {
+    MainVolumeSlider,
+    MusicVolumeSlider,
+    EffectsVolumeSlider,
+    GameplayVolumeSlider,
+    AmbientVolumeSlider,
+}
+
+impl MenuItemHandler for VolumeMenuActions {}
+
+fn on_enter_audio_menu(
+    fonts: Res<GuiAssets>,
+    mut commands: Commands,
+    program_state: Res<State<ProgramState>>,
+    mut previous_items: ResMut<PreviousMenuItems>,
+) {
+    macro_rules! make_volume_getter_setter_mute {
+        ($getter:ident $setter:ident $get_mute:ident $set_mute:ident => $channel:tt) => {
+            let $getter = commands.register_system(IntoSystem::into_system(|
+                In(entity): In<Entity>, mut slider_q: Query<&mut MenuSlider>, channels: Audio| {
+                slider_q.get_mut(entity).unwrap().current = Some(channels.$channel.volume.to_linear());
+            }));
+            let $setter = commands.register_system(IntoSystem::into_system(
+                |In(v): In<f32>, mut channels: Audio| {
+                    channels.$channel.volume = bevy::audio::Volume::Linear(v);
+                    channels.apply_volumes();
+                },
+            ));
+            let $get_mute = commands.register_system(IntoSystem::into_system(|
+                In(entity): In<Entity>, mut toggle_q: Query<&mut MenuToggle>, channels: Audio| {
+                toggle_q.get_mut(entity).unwrap().current = Some(!channels.$channel.muted);
+            }));
+            let $set_mute = commands.register_system(IntoSystem::into_system(
+                |In(v): In<bool>, mut channels: Audio| {
+                    channels.$channel.muted = !v;
+                    channels.apply_volumes();
+                },
+            ));
+        };
+    }
+
+    // make_volume_getter_setter_mute!(get_master set_master get_master_muted set_master_muted => main_volume);
+    // make_volume_getter_setter_mute!(get_music set_music  get_music_muted set_music_muted => music_volume);
+    // make_volume_getter_setter_mute!(get_effects set_effects  get_effects_muted set_effects_muted  => effects_volume);
+    // make_volume_getter_setter_mute!(get_gameplay set_gameplay  get_gameplay_muted set_gameplay_muted  => gameplay_volume);
+    // make_volume_getter_setter_mute!(get_ambient set_ambient  get_ambient_muted set_ambient_muted  => ambient_volume);
+
+    // let make_audio_slider = |getter, setter, defval| -> MenuSlider {
+    //     MenuSlider::new(
+    //         getter,
+    //         setter,
+    //         move || defval,
+    //         |v| (v * 100.0).round(),
+    //         |v| v / 100.0,
+    //         0.0..=100.0,
+    //         1.0,
+    //     )
+    // };
+
+    MenuItemBuilder::new(
+        commands,
+        OverlayState::AudioMenu,
+        *program_state.get(),
+        fonts.std_ui.clone(),
+        1.0,
+        &previous_items,
+    )
+    // .add_item(
+    //     "Master Volume",
+    //     (
+    //         make_audio_slider(get_master, set_master, Some(0.7)),
+    //         MenuToggle::new(
+    //             get_master_muted,
+    //             set_master_muted,
+    //         ),
+    //     ),
+    //     VolumeMenuActions::MainVolumeSlider,
+    // )
+    // .add_item(
+    //     "Music Volume",
+    //     (
+    //         make_audio_slider(get_music, set_music, Some(0.5)),
+    //         MenuToggle::new(
+    //             get_music_muted,
+    //             set_music_muted,
+    //         ),
+    //     ),
+    //     VolumeMenuActions::MusicVolumeSlider,
+    // )
+    // .add_item(
+    //     "Effects Volume",
+    //     (
+    //         make_audio_slider(get_effects, set_effects, Some(0.7)),
+    //         MenuToggle::new(
+    //             get_effects_muted,
+    //             set_effects_muted,
+    //         ),
+    //     ),
+    //     VolumeMenuActions::EffectsVolumeSlider,
+    // )
+    // .add_item(
+    //     "Gameplay Volume",
+    //     (
+    //         make_audio_slider(get_gameplay, set_gameplay, Some(1.0)),
+    //         MenuToggle::new(
+    //             get_gameplay_muted,
+    //             set_gameplay_muted,
+    //         ),
+    //     ),
+    //     VolumeMenuActions::GameplayVolumeSlider,
+    // )
+    // .add_item(
+    //     "Ambient Volume",
+    //     (
+    //         make_audio_slider(get_ambient, set_ambient, Some(0.5)),
+    //         MenuToggle::new(
+    //             get_ambient_muted,
+    //             set_ambient_muted,
+    //         ),
+    //     ),
+    //     VolumeMenuActions::AmbientVolumeSlider,
+    // )
+    .add_item("Back", (), SimpleMenuActions::Back)
+    .finish(&mut previous_items);
+}
+
+enum ControlMenuToggleActions {
+    TurnInvertX,
+    TurnInvertY,
+    ZoomInvertY,
+}
+
+impl MenuItemHandler for ControlMenuToggleActions {}
+
+fn on_enter_controls_menu(
+    fonts: Res<GuiAssets>,
+    program_state: Res<State<ProgramState>>,
+    mut commands: Commands,
+    mut previous_items: ResMut<PreviousMenuItems>,
+) {
+    // Scales are edited logarithmically.
+    fn sens_to_ui(v: f32) -> f32 {
+        if v > 0.0 {
+            v.log2()
+        } else {
+            0.0
+        }
+    }
+    fn sens_from_ui(v: f32) -> f32 {
+        v.exp2()
+    }
+
+    macro_rules! make_getter_setter {
+        ($getter:ident $setter:ident => $field1:ident $field2:tt) => {
+            let $getter = commands.register_system(IntoSystem::into_system(|
+                In(entity): In<Entity>, res: Res<PlayerControllerSettings>, mut slider_q: Query<&mut MenuSlider>| {
+                slider_q.get_mut(entity).unwrap().current = Some(res.$field1.$field2);
+            }));
+            let $setter = commands.register_system(IntoSystem::into_system(
+                |In(v): In<f32>, mut res: ResMut<PlayerControllerSettings>| {
+                    res.$field1.$field2 = v;
+                },
+            ));
+        };
+    }
+
+    macro_rules! make_toggle {
+        ($getter:ident $setter:ident => $field:ident) => {
+            let $getter = commands.register_system(IntoSystem::into_system(|
+                In(entity): In<Entity>, mut toggle_q: Query<&mut MenuToggle>, res: Res<PlayerControllerSettings>| {
+                toggle_q.get_mut(entity).unwrap().current = Some(res.$field);
+            }));
+            let $setter = commands.register_system(IntoSystem::into_system(
+                |In(v): In<bool>, mut res: ResMut<PlayerControllerSettings>| {
+                    res.$field = v;
+                },
+            ));
+        };
+    }
+
+    // make_getter_setter!(get_move_x set_move_x => move_scale x);
+    // make_getter_setter!(get_move_y set_move_y => move_scale y);
+    // make_getter_setter!(get_move_z set_move_z => move_scale z);
+    // make_getter_setter!(get_turn_x set_turn_x => turn_scale x);
+    // make_getter_setter!(get_turn_y set_turn_y => turn_scale y);
+    // make_getter_setter!(get_turn_z set_turn_z => turn_scale z);
+    // make_getter_setter!(get_zoom_y set_zoom_y => zoom_scale y);
+
+    // make_toggle!(get_invert_turn_x set_invert_turn_x => invert_turn_x);
+    // make_toggle!(get_invert_turn_y set_invert_turn_y => invert_turn_y);
+    // make_toggle!(get_invert_zoom_y set_invert_zoom_y => invert_zoom_y);
+
+    MenuItemBuilder::new(
+        commands,
+        OverlayState::ControlsMenu,
+        *program_state.get(),
+        fonts.std_ui.clone(),
+        0.75,
+        &previous_items,
+    )
+    // .add_item(
+    //     "Move Left/Right Power",
+    //     MenuSlider::new(
+    //         get_move_x,
+    //         set_move_x,
+    //         || Some(PlayerControllerSettings::default().move_scale.x),
+    //         sens_to_ui,
+    //         sens_from_ui,
+    //         -5.0f32..=5.0f32,
+    //         0.1,
+    //     ),
+    //     SliderMenuActions::MoveSensitivityXSlider,
+    // )
+    // .add_item(
+    //     "Move Up/Down Power",
+    //     MenuSlider::new(
+    //         get_move_y,
+    //         set_move_y,
+    //         || Some(PlayerControllerSettings::default().move_scale.y),
+    //         sens_to_ui,
+    //         sens_from_ui,
+    //         -5.0f32..=5.0f32,
+    //         0.1,
+    //     ),
+    //     SliderMenuActions::MoveSensitivityYSlider,
+    // )
+    // .add_item(
+    //     "Move Forward/Back Power",
+    //     MenuSlider::new(
+    //         get_move_z,
+    //         set_move_z,
+    //         || Some(PlayerControllerSettings::default().move_scale.z),
+    //         sens_to_ui,
+    //         sens_from_ui,
+    //         -5.0f32..=5.0f32,
+    //         0.1,
+    //     ),
+    //     SliderMenuActions::MoveSensitivityZSlider,
+    // )
+    // .add_item("Invert Turn X", (
+    //     MenuToggle::new(get_invert_turn_x, set_invert_turn_x),
+    // ), ControlMenuToggleActions::TurnInvertX)
+    // .add_item("Invert Turn Y", (
+    //     MenuToggle::new(get_invert_turn_y, set_invert_turn_y),
+    // ), ControlMenuToggleActions::TurnInvertY)
+    // .add_item(
+    //     "Turn X Power",
+    //     MenuSlider::new(
+    //         get_turn_x,
+    //         set_turn_x,
+    //         || Some(PlayerControllerSettings::default().turn_scale.x),
+    //         sens_to_ui,
+    //         sens_from_ui,
+    //         -5.0f32..=5.0f32,
+    //         0.1,
+    //     ),
+    //     SliderMenuActions::TurnSensitivityXSlider,
+    // )
+    // .add_item(
+    //     "Turn Y Power",
+    //     MenuSlider::new(
+    //         get_turn_y,
+    //         set_turn_y,
+    //         || Some(PlayerControllerSettings::default().turn_scale.y),
+    //         sens_to_ui,
+    //         sens_from_ui,
+    //         -5.0f32..=5.0f32,
+    //         0.1,
+    //     ),
+    //     SliderMenuActions::TurnSensitivityYSlider,
+    // )
+    // .add_item(
+    //     "Turn Z Power",
+    //     MenuSlider::new(
+    //         get_turn_z,
+    //         set_turn_z,
+    //         || Some(PlayerControllerSettings::default().turn_scale.z),
+    //         sens_to_ui,
+    //         sens_from_ui,
+    //         -5.0f32..=5.0f32,
+    //         0.1,
+    //     ),
+    //     SliderMenuActions::TurnSensitivityZSlider,
+    // )
+    // .add_item(
+    //     "Zoom Y Power",
+    //     MenuSlider::new(
+    //         get_zoom_y,
+    //         set_zoom_y,
+    //         || Some(PlayerControllerSettings::default().zoom_scale.y),
+    //         sens_to_ui,
+    //         sens_from_ui,
+    //         -5.0f32..=5.0f32,
+    //         0.1,
+    //     ),
+    //     SliderMenuActions::ZoomSensitivityYSlider,
+    // )
+    // .add_item("Invert Zoom Y", (
+    //     MenuToggle::new(get_invert_zoom_y, set_invert_zoom_y),
+    // ), ControlMenuToggleActions::ZoomInvertY)
+    .add_item("Back", (), SimpleMenuActions::Back)
+    .finish(&mut previous_items);
+}
+
+fn on_enter_video_menu(
+    fonts: Res<GuiAssets>,
+    program_state: Res<State<ProgramState>>,
+    mut commands: Commands,
+    mut previous_items: ResMut<PreviousMenuItems>,
+) {
+    let get_fov = commands.register_system(IntoSystem::into_system(|
+        In(entity): In<Entity>, s: Res<VideoSettings>, mut slider_q: Query<&mut MenuSlider>| {
+            slider_q.get_mut(entity).unwrap().current = Some(s.fov_degrees);
+        }));
+        let set_fov = commands.register_system(IntoSystem::into_system(
+            |In(v): In<f32>, mut commands: Commands, mut s: ResMut<VideoSettings>| {
+            s.fov_degrees = v;
+            commands.init_resource::<VideoCameraSettingsChanged>();
+        },
+    ));
+
+    macro_rules! make_res_enum_getter_setter {
+        ($getter:ident $setter:ident => $enum:ident $res:ident $field:tt) => {
+            let $getter = commands.register_system(IntoSystem::into_system(|
+                In(entity): In<Entity>, mut enum_q: Query<&mut MenuEnum>, res: Res<$res>| {
+                enum_q.get_mut(entity).unwrap().current = Some($enum::VARIANTS.iter().position(|e| *e == res.$field).unwrap());
+            }));
+            let $setter = commands.register_system(IntoSystem::into_system(
+                |In(v): In<usize>, mut res: ResMut<$res>, mut commands: Commands| {
+                    res.$field = $enum::VARIANTS[v];
+                    commands.init_resource::<VideoEffectSettingsChanged>();
+                },
+            ));
+        };
+    }
+
+    make_res_enum_getter_setter!(get_glass set_glass => GlassQuality VideoSettings glass_quality);
+    make_res_enum_getter_setter!(get_anti set_anti => Antialiasing VideoSettings antialiasing);
+    make_res_enum_getter_setter!(get_mesh_qual set_mesh_qual => MeshQuality VideoSettings mesh_quality);
+    make_res_enum_getter_setter!(get_tex_qual set_tex_qual => TextureQuality VideoSettings texture_quality);
+
+    MenuItemBuilder::new(
+        commands,
+        OverlayState::VideoMenu,
+        *program_state.get(),
+        fonts.std_ui.clone(),
+        1.0,
+        &previous_items,
+    )
+    .add_item(
+        "Field of View",
+        MenuSlider::new(
+            get_fov,
+            set_fov,
+            || Some(VideoSettings::default().fov_degrees),
+            |v| v,
+            |v| v.round(),
+            5.0f32..=120.0f32,
+            1.0,
+        ),
+        SliderMenuActions::FovSlider,
+    )
+    .add_item(
+        "Glass Refraction Quality",
+        MenuEnum::new(
+            get_glass,
+            set_glass,
+            || GlassQuality::VARIANTS.len(),
+            |index| GlassQuality::VARIANTS[index].to_string(),
+        ),
+        EnumMenuActions::GlassQualityEnum,
+    )
+    .add_item(
+        "Antialiasing",
+        MenuEnum::new(
+            get_anti,
+            set_anti,
+            || Antialiasing::VARIANTS.len(),
+            |index| Antialiasing::VARIANTS[index].to_string(),
+        ),
+        EnumMenuActions::AntialiasingEnum,
+    )
+    .add_item(
+        "Mesh Quality",
+        MenuEnum::new(
+            get_mesh_qual,
+            set_mesh_qual,
+            || MeshQuality::VARIANTS.len(),
+            |index| MeshQuality::VARIANTS[index].to_string(),
+        ),
+        EnumMenuActions::MeshQualityEnum,
+    )
+    .add_item(
+        "Texture Quality",
+        MenuEnum::new(
+            get_tex_qual,
+            set_tex_qual,
+            || TextureQuality::VARIANTS.len(),
+            |index| TextureQuality::VARIANTS[index].to_string(),
+        ),
+        EnumMenuActions::TextureQualityEnum,
+    )
+    .add_item("Back", (), SimpleMenuActions::Back)
+    .finish(&mut previous_items);
+}
+
+fn start_game(mut commands: Commands) {
+    commands.set_state(OverlayState::Hidden);
+    commands.set_state(ProgramState::InGame);
+    commands.set_state(GameplayState::AssetsLoading);
+    // commands.insert_resource(ConnectToServer);
+}

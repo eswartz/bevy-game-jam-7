@@ -1,23 +1,72 @@
 mod debug;
+mod audio;
+mod states_sets;
+mod menus_common;
+mod actions;
+mod lifecycle;
+mod menus;
+mod product;
+mod gui;
+mod video;
+mod world_state;
+mod world_ui;
+mod markers;
+mod texutils;
+mod level_state;
+
+use crate::actions::ActionPlugin;
+use crate::actions::UserAction;
 use crate::debug::*;
+use crate::audio::*;
+use crate::gui::GuiAssets;
+use crate::gui::GuiPlugin;
+use crate::level_state::LevelContentDefinedMessage;
+use crate::level_state::LevelGeometryLoadedMessage;
+use crate::level_state::LevelLoadFinishedMessage;
+use crate::level_state::LevelStatePlugin;
+use crate::lifecycle::LifecyclePlugin;
+use crate::lifecycle::PauseState;
+use crate::menus::MenuPlugin;
+use crate::product::ProductName;
+use crate::states_sets::*;
+use crate::menus_common::*;
+use crate::video::VideoCameraSettingsChanged;
+use crate::video::VideoEffectSettingsChanged;
+use crate::video::VideoSettings;
+use crate::world_state::WorldStatePlugin;
+use crate::world_ui::WorldUiPlugin;
 
 use std::time::Duration;
 
 use avian3d::prelude::*;
+use bevy::core_pipeline::oit::OrderIndependentTransparencySettings;
+use bevy::prelude::*;
+use bevy::camera::Exposure;
+use bevy::core_pipeline::prepass::DepthPrepass;
+use bevy::render::renderer::RenderAdapter;
+use bevy::render::renderer::RenderDevice;
+use bevy::render::view::Hdr;
+use bevy_asset_loader::prelude::*;
+use bevy::camera::visibility::RenderLayers;
+use bevy::window::PrimaryWindow;
+use bevy::window::WindowMode;
 use bevy::{
-    asset::AssetMetaCheck,
-    camera::visibility::NoFrustumCulling,
-    dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
-    gltf::GltfMeshName,
-    prelude::*,
-    scene::SceneInstanceReady,
-    winit::WinitSettings,
+    asset::AssetMetaCheck, camera::visibility::NoFrustumCulling, dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin}, gltf::GltfMeshName, image::{ImageAddressMode, ImageSamplerDescriptor}, prelude::*, scene::SceneInstanceReady, winit::WinitSettings
 };
 use bevy_egui::{
     EguiGlobalSettings, EguiPlugin, EguiPrimaryContextPass,
 };
 use bevy_inspector_egui::DefaultInspectorConfigPlugin;
+use bevy_seedling::SeedlingPlugin;
 use bevy_skein::SkeinPlugin;
+use leafwing_input_manager::plugin::InputManagerPlugin;
+use leafwing_input_manager::prelude::ActionState;
+
+
+#[derive(Component, Reflect, Default)]
+#[reflect(Component, Default)]
+#[type_path = "game"]
+struct PlayerStart;
 
 #[derive(Component, Reflect, Default)]
 #[reflect(Component, Default)]
@@ -34,11 +83,6 @@ struct Clone;
 #[type_path = "game"]
 struct Spawned;
 
-#[derive(Resource, Reflect, Default, Deref, DerefMut)]
-#[reflect(Resource, Default)]
-#[type_path = "game"]
-struct PauseState(pub bool);
-
 #[derive(Resource, Reflect)]
 #[reflect(Resource)]
 #[type_path = "game"]
@@ -47,7 +91,19 @@ struct Base(pub Entity, pub Transform);
 #[derive(Resource, Reflect, Default)]
 #[reflect(Resource, Default)]
 #[type_path = "game"]
+struct Spawning(pub bool);
+
+#[derive(Resource, Reflect, Default)]
+#[reflect(Resource, Default)]
+#[type_path = "game"]
 struct Shake(pub Vec3);
+
+/// This is registered to initiate a shutdown.
+/// The process may take a few frames (e.g. waiting on network).
+#[derive(Debug, Resource)]
+pub struct ExitRequest;
+
+const PRODUCT_NAME: &str = "JAM";
 
 fn main() {
     App::new()
@@ -67,24 +123,59 @@ fn main() {
                 meta_check: AssetMetaCheck::Never,
                 watch_for_changes_override: Some(true),
                 ..default()
-            }),
+            })
+            .set(ImagePlugin {
+                default_sampler: ImageSamplerDescriptor {
+                    address_mode_u: ImageAddressMode::Repeat,
+                    address_mode_v: ImageAddressMode::Repeat,
+                    address_mode_w: ImageAddressMode::Repeat,
+                    ..ImageSamplerDescriptor::linear()
+                },
+            })
+            ,
             SkeinPlugin::default(),
             PhysicsPlugins::default(),
         ))
         .add_plugins(avian3d::debug_render::PhysicsDebugPlugin::default()) // show colliders
+
+        ////////
+
+        .insert_state(ProgramState::default())
+        .insert_state(GameplayState::default())
+        .insert_state(OverlayState::default())
+
+        //////
+
+        .add_systems(First,
+            (
+                bevy::dev_tools::states::log_transitions::<ProgramState>,
+                bevy::dev_tools::states::log_transitions::<GameplayState>,
+                bevy::dev_tools::states::log_transitions::<OverlayState>,
+            )
+        )
+
+
+        .add_loading_state(
+            LoadingState::new(ProgramState::Initializing)
+                .continue_to_state(ProgramState::New)
+        )
+
+        // .configure_loading_state(
+        //     LoadingStateConfig::new(ProgramState::Initializing)
+        //         .load_collection::<GuiAssets>()
+        // )
+        // .configure_loading_state(
+        //     LoadingStateConfig::new(ProgramState::LoadingSave)
+        //         .load_collection::<GuiAssets>()
+        // )
+
+        //////
         .add_plugins(EguiPlugin::default())
         .insert_resource(EguiGlobalSettings {
             auto_create_primary_context: false,
             ..default()
         })
-        .add_plugins(DefaultInspectorConfigPlugin)
-        .add_plugins(FpsOverlayPlugin {
-            config: FpsOverlayConfig {
-                enabled: true,
-                text_config: TextFont::from_font_size(12.0),
-                ..default()
-            },
-        })
+        .add_plugins(FpsOverlayPlugin::default())
         .insert_gizmo_config(
             PhysicsGizmos::default(),
             GizmoConfig {
@@ -94,20 +185,245 @@ fn main() {
                 ..default()
             },
         )
-        .insert_resource(PauseState::default())
+        ////////
+
+        .add_plugins(SeedlingPlugin::default())
+        .add_systems(OnEnter(ProgramState::InGame), initialize_audio)
+
+        ////////
+
+        .add_systems(First, (
+            check_app_exit
+                // .in_set(MessageUpdateSystems)
+                ,
+            check_windows_closed
+                // .in_set(MessageUpdateSystems)
+                ,
+        ).chain())
+
+        .add_systems(OnEnter(ProgramState::Initializing),
+            on_enter_initializing
+        )
+        .add_systems(OnEnter(ProgramState::New),
+            (
+                on_enter_loading,
+                init_perf_ui,
+            )
+            .chain()
+        )
+        .add_systems(OnEnter(ProgramState::LaunchMenu),
+            (
+                on_enter_launch_menu,
+            )
+            .chain()
+        )
+        .add_systems(OnEnter(ProgramState::InGame),
+            (
+                on_exit_launch_menu,
+                on_enter_in_game,
+            )
+            .chain()
+        )
+
+        .add_systems(OnEnter(ProgramState::InGame),
+            (
+                ensure_3d_camera,
+                show_3d_camera,
+            )
+        )
+        .add_systems(OnEnter(ProgramState::LaunchMenu),
+            hide_3d_camera, //.in_set(SimulationSystems),
+        )
+
+        .add_plugins(ActionPlugin)
+        .add_plugins(MenuPlugin)
+
+        .add_plugins(LifecyclePlugin)
+        .add_plugins(LevelStatePlugin)
+        .add_plugins(GuiPlugin)
+        .add_plugins(WorldUiPlugin)
+        .add_plugins(WorldStatePlugin)
+        .add_plugins(DebugPlugin)
+
+        .add_systems(Update,
+            (
+                process_global_actions,
+                check_actions,
+            )
+        )
+        .insert_resource(VideoSettings::default())
+
+        ////////
+
+        .insert_resource(ProductName(PRODUCT_NAME.to_string()))
+
+        .insert_resource(PauseState::new(false))
+        .insert_resource(Spawning(false))
         .insert_resource(Base(Entity::PLACEHOLDER, Transform::IDENTITY))
         .add_observer(observe_spawn_mesh)
-        .add_systems(Startup, (startup,).chain())
+        // .add_systems(
+        //     OnEnter(GameplayState::AssetsLoaded), on_enter_initializing)
         .add_systems(
             PreUpdate,
             (setup_egui_style, ensure_egui_context)
                 .chain()
-                .run_if(egui_not_initialized),
+                .run_if(egui_not_initialized)
+                .run_if(in_state(GameplayState::Playing))
+                ,
         )
-        .add_systems(Update, (check_actions, check_ball_death, shake_base))
-        .add_systems(PostUpdate, spawn_ball)
-        .add_systems(EguiPrimaryContextPass, (update_egui_inspector_ui,))
+        .add_systems(Update, (
+            check_ball_death, shake_base,
+        ).run_if(in_state(GameplayState::Playing)))
+        .add_systems(PostUpdate, (
+            spawn_ball,
+        ).run_if(in_state(GameplayState::Playing)))
         .run();
+}
+
+fn init_3d_camera(mut commands: Commands, use_clustered: bool) {
+    info!("Initializing 3D camera");
+
+    // Force init.
+    commands.insert_resource(VideoCameraSettingsChanged);
+    commands.insert_resource(VideoEffectSettingsChanged);
+
+    let ent_commands = commands.spawn((
+        Name::new("FirstPersonCamera"),
+        DespawnOnExit(GameplayState::Playing),
+        // PlayerCamera(CameraMode::FirstPerson),
+        // OurCamera::default(),
+        Transform::from_xyz(0., 1., 0.),
+    ));
+    setup_3d_camera(ent_commands, use_clustered);
+}
+
+fn ensure_3d_camera(
+    mut commands: Commands,
+    camera_q: Query<Entity/* , With<OurCamera> */>,
+    render_device: Res<RenderDevice>,
+    render_adapter: Res<RenderAdapter>,
+) {
+    let use_clustered =
+        bevy::pbr::decal::clustered::clustered_decals_are_usable(&render_device, &render_adapter);
+
+    if let Ok(ent) = camera_q.single() {
+        setup_3d_camera(commands.get_entity(ent).unwrap(), use_clustered);
+    } else {
+        init_3d_camera(commands.reborrow(), use_clustered);
+    }
+}
+
+fn setup_3d_camera(mut ent_commands: EntityCommands, use_clustered: bool) {
+    info!("Setting up camera");
+    ent_commands.insert((
+        Camera3d::default(),
+        Exposure{ ev100: 10.0 },
+        Camera {
+            clear_color: Color::BLACK.into(),
+            ..default()
+        },
+        Hdr,
+        Projection::Perspective(PerspectiveProjection {
+            // fov: std::f32::consts::PI / 5.0,
+            fov: 75f32.to_radians(),
+            ..default()
+        }),
+        OrderIndependentTransparencySettings::default(),
+        Msaa::Off,
+        // AudioCameraListener,
+    ));
+    if !use_clustered {
+        ent_commands.insert(DepthPrepass);
+    }
+}
+
+fn show_3d_camera(mut camera_q: Query<&mut Camera, (With<Camera3d>, /* With<OurCamera> */)>) {
+    if let Ok(mut camera) = camera_q.single_mut() {
+        camera.is_active = true;
+    }
+}
+
+fn hide_3d_camera(mut camera_q: Query<&mut Camera, (With<Camera3d>, /* With<OurCamera> */)>) {
+    if let Ok(mut camera) = camera_q.single_mut() {
+        camera.is_active = false;
+    }
+}
+
+fn check_app_exit(
+    mut commands: Commands,
+    exit: Option<Res<ExitRequest>>,
+    // state: Res<RpcState>,
+    // disconnecting: Option<Res<DisconnectFromServer>>,
+    mut app_exit: MessageWriter<AppExit>,
+) {
+    if exit.is_none() {
+        return;
+    }
+
+    // // Exiting takes a few steps due to async work.
+    // if state.is_connected() {
+    //     // Session still active.
+    //     if disconnecting.is_none() {
+    //         commands.insert_resource(DisconnectFromServer);
+    //     } else {
+    //         // Still disconnecting...
+    //     }
+    // } else {
+    commands.remove_resource::<ExitRequest>();
+    app_exit.write(AppExit::Success);
+    // }
+}
+
+/// It seems WindowClosed, WindowClosing, WindowDestroyed events don't make it for the primary window...?
+fn check_windows_closed(windows: Query<&Window>, mut commands: Commands) {
+    if windows.is_empty() {
+        commands.insert_resource(ExitRequest);
+    }
+}
+
+
+fn on_enter_initializing(
+    mut commands: Commands,
+    camera_q: Query<&Camera, With<Camera2d>>,
+    asset_server: Res<AssetServer>,
+) {
+    if camera_q.single().is_err() {
+        commands.spawn((
+            Camera2d,
+            Camera {
+                // Render before 3D.
+                order: -1,
+                clear_color: ClearColorConfig::Default,
+                ..default()
+            },
+            RenderLayers::from_layers(&[1]),
+        ));
+    }
+}
+
+fn on_enter_loading(mut next_program_state: ResMut<NextState<ProgramState>>) {
+    next_program_state.set(ProgramState::LaunchMenu);
+}
+
+fn on_enter_launch_menu(mut next_overlay_state: ResMut<NextState<OverlayState>>) {
+    next_overlay_state.set(OverlayState::MainMenu);
+}
+
+fn on_exit_launch_menu(mut next_overlay_state: ResMut<NextState<OverlayState>>) {
+    next_overlay_state.set(OverlayState::Hidden);
+}
+
+fn on_enter_in_game(mut time: ResMut<Time<Physics>>) {
+    time.unpause();
+}
+
+fn init_perf_ui(mut commands: Commands) {
+    commands.insert_resource(FpsOverlayConfig {
+        text_config: TextFont::from_font_size(10.0),
+        text_color: Color::WHITE.with_alpha(0.5),
+        refresh_interval: Duration::from_secs_f32(1.0 / 10.0),
+        ..default()
+    });
 }
 
 fn observe_spawn_mesh(
@@ -159,31 +475,15 @@ fn observe_spawn_mesh(
     }
 }
 
-fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn((
-        Camera2d,
-        Camera {
-            // Render before 3D.
-            order: -1,
-            clear_color: ClearColorConfig::Default,
-            ..default()
-        },
-        // RenderLayers::from_layers(&[1]),
-    ));
-    commands.spawn(SceneRoot(
-        asset_server.load(GltfAssetLabel::Scene(0).from_asset("test.glb")),
-    ));
-}
-
 fn spawn_ball(
     mut commands: Commands,
     generator_q: Query<(Entity, &Transform), With<Generator>>,
     time: Res<Time>,
     assets: Res<AssetServer>,
-    pause: Res<PauseState>,
+    spawning: Res<Spawning>,
     mut timer: Local<Timer>,
 ) {
-    if **pause {
+    if !spawning.0 {
         return;
     }
 
@@ -210,15 +510,16 @@ fn spawn_ball(
 
 fn check_actions(
     keys: Res<ButtonInput<KeyCode>>,
-    mut pause: ResMut<PauseState>,
+
     base: Res<Base>,
     time: Res<Time>,
     shake: Option<Res<Shake>>,
+    spawning: Res<Spawning>,
     mut commands: Commands,
     mut forces: Query<Forces>,
 ) {
-    if keys.just_released(KeyCode::Pause) || keys.just_released(KeyCode::MediaPlayPause) {
-        **pause = !**pause;
+    if keys.just_released(KeyCode::Enter) {
+        commands.insert_resource(Spawning(!spawning.0))
     }
     if keys.just_released(KeyCode::Space) {
         if let Ok(mut force) = forces.get_mut(base.0) {
@@ -310,4 +611,87 @@ fn check_ball_death(
             }
         }
     }
+}
+
+fn process_global_actions(
+    mut commands: Commands,
+    action_state: Res<ActionState<UserAction>>,
+    program_state: Res<State<ProgramState>>,
+    overlay_state: Res<State<OverlayState>>,
+    mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
+    mut pause_state: ResMut<PauseState>,
+    // mut audio: Audio,
+) {
+    if action_state.just_pressed(&UserAction::ToggleMenu) {
+        match overlay_state.get() {
+            OverlayState::Hidden | OverlayState::Loading => {
+                if *program_state.get() == ProgramState::InGame {
+                    pause_state.set_menu_paused(true);
+                    commands.set_state(OverlayState::EscapeMenu);
+                }
+            }
+            OverlayState::MainMenu => {
+                // Nothing
+            }
+            OverlayState::EscapeMenu => {
+                pause_state.set_menu_paused(false);
+                commands.set_state(OverlayState::Hidden);
+            }
+            OverlayState::GameMenu => {
+                if *program_state.get() == ProgramState::InGame {
+                    commands.set_state(OverlayState::EscapeMenu);
+                } else {
+                    commands.set_state(OverlayState::MainMenu);
+                }
+            }
+            OverlayState::OptionsMenu => {
+                if *program_state.get() == ProgramState::InGame {
+                    commands.set_state(OverlayState::EscapeMenu);
+                } else {
+                    commands.set_state(OverlayState::MainMenu);
+                }
+            }
+            OverlayState::AudioMenu | OverlayState::VideoMenu | OverlayState::ControlsMenu => {
+                if *program_state.get() == ProgramState::InGame {
+                    commands.set_state(OverlayState::EscapeMenu);
+                } else {
+                    commands.set_state(OverlayState::OptionsMenu);
+                }
+            }
+            OverlayState::DebugGuiVisible => {
+                commands.set_state(OverlayState::Hidden);
+            }
+        }
+    }
+    if action_state.just_pressed(&UserAction::TogglePause) {
+        let paused = !pause_state.is_user_paused();
+        pause_state.set_user_paused(paused);
+    }
+    if action_state.just_pressed(&UserAction::ToggleDebugUi) {
+        commands.set_state(match overlay_state.get() {
+            OverlayState::Hidden => OverlayState::DebugGuiVisible,
+            OverlayState::DebugGuiVisible => OverlayState::Hidden,
+            current => *current,
+        });
+    }
+    if action_state.just_pressed(&UserAction::ToggleFullScreen)
+        && let Ok(mut window) = primary_window.single_mut()
+    {
+        let cur_mode = window.mode;
+        window.mode = match cur_mode {
+            WindowMode::Windowed => WindowMode::BorderlessFullscreen(MonitorSelection::Current),
+            WindowMode::BorderlessFullscreen(_monitor_selection) => WindowMode::Windowed,
+
+            // WindowMode::BorderlessFullscreen(monitor_selection) => WindowMode::Fullscreen(
+            //     monitor_selection, VideoModeSelection::Current),
+            WindowMode::Fullscreen(_monitor_selection, _video_mode_selection) => {
+                WindowMode::Windowed
+            }
+        };
+    }
+    // if action_state.just_pressed(&UserAction::ToggleMute) {
+    //     let was_muted = audio.is_muted();
+    //     audio.set_muted(!was_muted);
+    // }
+
 }

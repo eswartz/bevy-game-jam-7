@@ -1,0 +1,110 @@
+use std::sync::atomic::Ordering;
+
+use avian3d::prelude::Physics;
+use avian3d::prelude::PhysicsTime as _;
+use bevy::prelude::*;
+
+use crate::markers::DespawnAfter;
+
+pub struct LifecyclePlugin;
+
+impl Plugin for LifecyclePlugin {
+    fn build(&self, app: &mut App) {
+        app
+            .register_type::<PauseState>()
+            .init_resource::<PauseState>()
+            // .add_message::<PostStatusMessage>()
+            .add_systems(Update, (
+                check_pause_request,
+                check_despawners.run_if(not(is_paused))
+            ))
+        ;
+    }
+}
+
+fn check_despawners(
+    mut commands: Commands,
+    mut despawn_q: Query<(Entity, &mut DespawnAfter)>,
+    time: Res<Time>,
+) {
+    let dt = time.delta();
+    for (ent, mut despawn) in despawn_q.iter_mut() {
+        if despawn.0 <= dt {
+            commands.entity(ent).try_despawn();
+        } else {
+            despawn.0 = despawn.0.saturating_sub(dt);
+        }
+    }
+}
+
+
+/// This resource reflects and drives the state of Pause across the process.
+#[derive(Resource, Debug, Clone, Reflect, Default)]
+#[reflect(Resource)]
+pub struct PauseState {
+    /// User state (e.g. from pressing Pause key)
+    user: bool,
+    /// Menu state (a menu is up)
+    menu: bool,
+}
+
+impl PauseState {
+    pub fn new(user: bool) -> Self {
+        Self{ user, menu: false }
+    }
+
+    pub fn is_paused(&self) -> bool { self.user | self.menu }
+    pub fn is_user_paused(&self) -> bool { self.user }
+    pub fn is_menu_paused(&self) -> bool { self.menu }
+
+    pub fn set_user_paused(&mut self, paused: bool) {
+        self.user = paused
+    }
+    pub fn set_menu_paused(&mut self, paused: bool) {
+        self.menu = paused
+    }
+}
+
+pub(crate) fn check_pause_request(
+    paused: ResMut<PauseState>,
+    mut time: ResMut<Time<Physics>>,
+    // synths_paused: Res<MidiSynthsPaused>,
+    // mut animator_transform_q: Query<&mut TweenAnim>,
+    // mut time_runner_q: Query<&mut TimeRunner>,
+) {
+    if paused.is_changed() {
+        let pause = paused.is_paused();
+        if pause {
+            time.pause();
+            // synths_paused.0.store(true, Ordering::SeqCst);
+            // for mut animator in animator_transform_q.iter_mut() {
+            //     animator.playback_state = bevy_tweening::PlaybackState::Paused;
+            // }
+            // for mut runner in time_runner_q.iter_mut() {
+            //     runner.set_paused(true);
+            // }
+        } else {
+            time.unpause();
+            // synths_paused.0.store(false, Ordering::SeqCst);
+            // for mut animator in animator_transform_q.iter_mut() {
+            //     animator.playback_state = bevy_tweening::PlaybackState::Playing;
+            // }
+            // for mut runner in time_runner_q.iter_mut() {
+            //     runner.set_paused(false);
+            // }
+        }
+    }
+}
+
+/// Use as a condition to test whether any field in PauseState is set.
+pub fn is_paused(paused: Res<PauseState>) -> bool {
+    paused.is_paused()
+}
+/// Use as a condition to test whether the user pause state is set.
+pub fn is_user_paused(paused: Res<PauseState>) -> bool {
+    paused.is_user_paused()
+}
+/// Use as a condition to test whether the menu pause state is set.
+pub fn is_menu_paused(paused: Res<PauseState>) -> bool {
+    paused.is_menu_paused()
+}
