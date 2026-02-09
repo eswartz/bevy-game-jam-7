@@ -111,7 +111,6 @@ impl<'w, 's> MenuItemBuilder<'w, 's> {
             )
             .id();
 
-
         Self {
             overlay,
             font,
@@ -211,7 +210,9 @@ impl<'w, 's> MenuItemBuilder<'w, 's> {
             self.commands.insert_resource(InputFocus(Some(first_ent)));
             self.commands.insert_resource(RefreshMenu);
             self.commands.entity(first_ent).insert(Interaction::Hovered);
+            self.commands.write_message(MenuActionMessage::Navigate(first_ent));
         }
+
     }
 }
 
@@ -233,6 +234,8 @@ pub struct DraggingMenuItem(pub Option<Entity>);
 /// Event firing a menu action.
 #[derive(Message, Debug, Clone)]
 pub enum MenuActionMessage {
+    /// Navigate and change focus.
+    Navigate(Entity),
     /// Activate the given item (menu/toggle/slider).
     Activate(Entity),
     /// Reset the menu item to default.
@@ -250,7 +253,8 @@ pub enum MenuActionMessage {
 impl MenuActionMessage {
     pub fn entity(&self) -> Entity {
         match self {
-            MenuActionMessage::Activate(entity)
+            MenuActionMessage::Navigate(entity)
+            | MenuActionMessage::Activate(entity)
             | MenuActionMessage::Reset(entity)
             | MenuActionMessage::Next(entity)
             | MenuActionMessage::Previous(entity)
@@ -667,6 +671,7 @@ fn handle_menu_keys_navigation(
                 Ok(next) => {
                     focus.set(next);
                     visible.0 = true;
+                    commands.write_message(MenuActionMessage::Navigate(next));
                 }
                 Err(e) => {
                     // This failure mode is recoverable, but still indicates a problem.
@@ -674,6 +679,7 @@ fn handle_menu_keys_navigation(
                     if let TabNavigationError::NoTabGroupForCurrentFocus { new_focus, .. } = e {
                         focus.set(new_focus);
                         visible.0 = true;
+                        commands.write_message(MenuActionMessage::Navigate(new_focus));
                     }
                 }
             }
@@ -852,6 +858,7 @@ fn handle_menu_slider_actions(
         };
 
         match event {
+            MenuActionMessage::Navigate(_) => (),
             MenuActionMessage::Activate(_) => (),
             MenuActionMessage::Reset(_) => {
                 if let Some(default) = (slider.default_fn)() {

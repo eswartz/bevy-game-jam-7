@@ -22,6 +22,7 @@ use crate::gui::GuiPlugin;
 use crate::lifecycle::LifecyclePlugin;
 use crate::lifecycle::PauseState;
 use crate::menus::MenuPlugin;
+use crate::menus_common::MenuActionMessage;
 use crate::product::PRODUCT_NAME;
 use crate::product::ProductName;
 use crate::states_sets::*;
@@ -301,7 +302,7 @@ fn setup_3d_camera(mut ent_commands: EntityCommands, use_clustered: bool) {
         }),
         OrderIndependentTransparencySettings::default(),
         Msaa::Off,
-        // AudioCameraListener,
+        SpatialListener::default(),
     ));
     if !use_clustered {
         ent_commands.insert(DepthPrepass);
@@ -323,29 +324,17 @@ fn hide_3d_camera(mut camera_q: Query<&mut Camera, (With<Camera3d> /* With<OurCa
 fn check_app_exit(
     mut commands: Commands,
     exit: Option<Res<ExitRequest>>,
-    // state: Res<RpcState>,
-    // disconnecting: Option<Res<DisconnectFromServer>>,
     mut app_exit: MessageWriter<AppExit>,
 ) {
     if exit.is_none() {
         return;
     }
 
-    // // Exiting takes a few steps due to async work.
-    // if state.is_connected() {
-    //     // Session still active.
-    //     if disconnecting.is_none() {
-    //         commands.insert_resource(DisconnectFromServer);
-    //     } else {
-    //         // Still disconnecting...
-    //     }
-    // } else {
     commands.remove_resource::<ExitRequest>();
     app_exit.write(AppExit::Success);
-    // }
 }
 
-/// It seems WindowClosed, WindowClosing, WindowDestroyed events don't make it for the primary window...?
+// It seems WindowClosed, WindowClosing, WindowDestroyed events don't make it for the primary window...?
 fn check_windows_closed(windows: Query<&Window>, mut commands: Commands) {
     if windows.is_empty() {
         commands.insert_resource(ExitRequest);

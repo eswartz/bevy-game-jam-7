@@ -1,7 +1,9 @@
 use bevy::prelude::*;
 use bevy_asset_loader::asset_collection::AssetCollection;
+use bevy_asset_loader::asset_collection::AssetCollectionWorld as _;
 use bevy_seedling::prelude::*;
 
+use crate::menus_common::MenuActionMessage;
 use crate::states_sets::GameplayState;
 use crate::states_sets::LevelState;
 
@@ -10,11 +12,17 @@ pub struct AudioPlugin;
 impl Plugin for AudioPlugin {
     fn build(&self, app: &mut App) {
         app
+            .add_systems(Startup,
+                preload_audio
+            )
             .add_systems(OnEnter(LevelState::Playing),
                 init_background_audio
             )
             .add_systems(PostUpdate,
                 apply_volumes
+            )
+            .add_systems(Update,
+                spawn_menu_sfx
             )
         ;
     }
@@ -46,6 +54,18 @@ pub struct MusicAssets {
     pub song0: Handle<AudioSample>,
 }
 
+
+#[derive(Resource, AssetCollection)]
+pub struct FxAssets {
+    #[asset(path = "sounds/164472__deleted_user_2104797__crack-of-branch-3.ogg")]
+    pub action: Handle<AudioSample>,
+    #[asset(path = "sounds/164472__deleted_user_2104797__crack-of-branch-3-rev.ogg")]
+    pub back: Handle<AudioSample>,
+}
+
+pub(crate) fn preload_audio(world: &mut World) {
+    world.init_collection::<FxAssets>();
+}
 
 pub(crate) fn initialize_audio(master: Single<Entity, With<MainBus>>, mut commands: Commands) {
     commands.entity(*master).insert(UserVolume {
@@ -113,4 +133,36 @@ pub(crate) fn apply_volumes(
             ..default()
         });
     }
+}
+
+fn spawn_menu_sfx(mut commands: Commands,
+    fx: Res<FxAssets>,
+    mut reader: MessageReader<MenuActionMessage>
+) {
+    if reader.is_empty() {
+        return
+    }
+
+    let mut was_back = false;
+    for event in reader.read() {
+        match event {
+            MenuActionMessage::Navigate(_) |
+            MenuActionMessage::Activate(_) |
+            MenuActionMessage::Next(_) => was_back = false,
+            MenuActionMessage::Reset(_) | MenuActionMessage::Previous(_) => {
+                was_back = true;
+            }
+            MenuActionMessage::Slide(..) => return,
+        }
+    }
+
+    // Limit to one per frame.
+    commands.spawn((
+        UiSfx,
+        SamplePlayer::new(if was_back {
+            fx.back.clone()
+        } else {
+            fx.action.clone()
+        }),
+    ));
 }
