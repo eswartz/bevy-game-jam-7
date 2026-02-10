@@ -13,7 +13,6 @@ codegen-backend = "cranelift"
 [profile.dev.package."*"]
 codegen-backend = "llvm"
 
-
 [patch.crates-io]
 # bevy = { path = "../bevy-fork" }
 # bevy = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }

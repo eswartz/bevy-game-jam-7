@@ -5,15 +5,10 @@ mod audio;
 
 use crate::assets::FxAssets;
 use crate::assets::MapAssets;
-use crate::assets::MusicAssets;
 use crate::audio::AudioPlugin;
 use crate::menus::MenuPlugin;
-use bevy_seedling::prelude::SpatialBasicNode;
-use bevy_seedling::prelude::VolumeNode;
-use bevy_seedling::prelude::PoolLabel;
 use bevy_seedling::sample::PlaybackSettings;
 use bevy_seedling::sample::SamplePlayer;
-use bevy_seedling::sample_effects;
 use common::*;
 use rand::RngExt;
 
@@ -29,8 +24,6 @@ use bevy::prelude::*;
 use bevy::render::renderer::RenderAdapter;
 use bevy::render::renderer::RenderDevice;
 use bevy::render::view::Hdr;
-use bevy::window::PrimaryWindow;
-use bevy::window::WindowMode;
 use bevy::{
     asset::AssetMetaCheck,
     camera::visibility::NoFrustumCulling,
@@ -43,10 +36,7 @@ use bevy::{
 use bevy_asset_loader::prelude::*;
 use bevy_egui::input::egui_wants_any_keyboard_input;
 use bevy_egui::{EguiGlobalSettings, EguiPlugin};
-use bevy_seedling::SeedlingPlugin;
-use bevy_seedling::prelude::MainBus;
 use bevy_skein::SkeinPlugin;
-use leafwing_input_manager::prelude::ActionState;
 
 #[derive(Component, Reflect, Default)]
 #[reflect(Component, Default)]
@@ -303,8 +293,8 @@ fn setup_3d_camera(mut ent_commands: EntityCommands, use_clustered: bool) {
             fov: 75f32.to_radians(),
             ..default()
         }),
-        OrderIndependentTransparencySettings::default(),
-        Msaa::Off,
+        // OrderIndependentTransparencySettings::default(),
+        // Msaa::Off,
         Name::new("Camera"),
 
         RigidBody::Dynamic,
@@ -319,7 +309,7 @@ fn setup_3d_camera(mut ent_commands: EntityCommands, use_clustered: bool) {
         AngularDamping(0.99),
         // PhysicsLayer(GameLayer::World),
     ));
-    ;
+
     if !use_clustered {
         ent_commands.insert(DepthPrepass);
     }
@@ -431,7 +421,7 @@ fn observe_spawn_mesh(
                 .entity(entity)
                 .insert((NoFrustumCulling, MaxLinearSpeed(256.0)));
 
-            if owner_name_is("boy_rig") || owner_name_is("Base") || owner_name_is("Tube") {
+            if owner_name_is("Base") || owner_name_is("Tube") {
                 // dbg!(entity);
                 commands
                     .entity(entity)
@@ -513,15 +503,21 @@ fn spawn_ball(
         ;
         commands.spawn((
             Sfx,
+
+            // Make into spatial sound.
+            Transform::from_translation(xfrm.translation),
+            // sample_effects![SpatialBasicNode {
+            //     // volume: Volume::Linear(rng.random_range(0.1f32 .. 1.0f32)),
+
+            //     ..default()
+            // }],
+
             SamplePlayer::new(fx.belch.clone()),
             PlaybackSettings {
                 speed: rng.random_range(0.75 .. 1.25),
                 ..default()
             },
-            VolumeNode::from_linear(rng.random_range(0.1f32 .. 1.0f32)),
-
-            xfrm.clone(),
-            sample_effects![SpatialBasicNode::default()],
+            // VolumeNode::from_linear(1.0),
         ));
     }
 }
@@ -655,36 +651,12 @@ fn check_ball_death(
 
 fn move_camera_around(
     time: Res<Time<Physics>>,
-    camera_q: Single<(Entity, &Transform), (With<Camera3d>, Without<SpatialListener>, /* With<OurCamera>, */)>,
-    // aabb_q: Query<&Aabb>,
-    mut listener_xfrm_q: Single<&mut Transform, (With<SpatialListener>, Without<Camera3d>)>,
-    // mut ray_cast: MeshRayCast,
-    // listener: Single<Entity, With<SpatialListener>>,
+    camera_q: Single<(Entity, &Transform), With<Camera3d>>,
     mut forces_q: Query<Forces>,
 ) {
     if time.is_paused() {
         return
     }
-
-    // // Move
-    // let ray = Ray3d::new(Vec3::ZERO, Dir3::X);
-
-    // let filter = |entity| true;
-
-    // let early_exit_test = |_entity| true;
-
-    // let visibility = RayCastVisibility::VisibleInView;
-
-    // let settings = MeshRayCastSettings::default()
-    //     .with_filter(&filter)
-    //     .with_early_exit_test(&early_exit_test)
-    //     .with_visibility(visibility);
-
-    // let hits = ray_cast.cast_ray(ray, &settings);
-
-    // // if !hits.is_empty() && hits[0].1.distance < CAMERA_SIZE {
-    // //     commands.entity(*listener).insert(Transform::from_translation(hits[0].1.point));
-    // // }
 
     // Move some.
     let mut rng = rand::rng();
@@ -696,26 +668,17 @@ fn move_camera_around(
     let orig_pos = camera_q.1.translation;
     let diff_rot = camera_q.1.rotation * diff;
 
-    let new_pos = orig_pos + diff_rot * 10.0 * time.delta_secs();
+    let new_pos = orig_pos + diff_rot * 50.0 * time.delta_secs();
 
     // camera_q.translation += diff_rot * 10.0 * time.delta_secs();
     if let Ok(mut forces) = forces_q.get_mut(camera_q.0) {
         forces.apply_linear_impulse((new_pos - orig_pos) * time.delta_secs());
     }
-
-    // let diff = Vec3::new(
-    //     rng.random_range(-1.0 ..= 1.0),
-    //     rng.random_range(-1.0 ..= 1.0),
-    //     rng.random_range(-1.0 ..= 1.0),
-    // );
-    // listener_xfrm_q.translation = camera_q.translation + diff;
-
-    listener_xfrm_q.translation = new_pos.lerp(listener_xfrm_q.translation, 0.5);
 }
 
 fn aim_camera_around(
     time: Res<Time<Physics>>,
-    mut camera_q: Single<(Entity, &mut Transform), (With<Camera3d>, Without<SpatialListener>, /* With<OurCamera>, */)>,
+    mut camera_q: Single<(Entity, &mut Transform), With<Camera3d> /* With<OurCamera>, */>,
 ) {
     if time.is_paused() {
         return

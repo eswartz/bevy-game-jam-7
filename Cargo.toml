@@ -66,8 +66,10 @@ egui = { version = "0.33", features = ["bytemuck"] }
 firewheel = { version = "0.10.0" }
 
 bevy_seedling = { version = "0.7.0", default-features = false, features = [
-    "stream", "wav", "ogg", "rand", "loudness", "reflect",
-    "hrtf",
+    "wav", "ogg", "rand", "reflect",
+
+    "dev",
+    "stream", "loudness", "hrtf", "web_audio",
 ] }
 rustc-hash = "2.1.1"
 

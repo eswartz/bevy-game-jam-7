@@ -1598,6 +1598,7 @@ dependencies = [
  "ebur128",
  "firewheel",
  "firewheel-ircam-hrtf",
+ "firewheel-web-audio",
  "portable-atomic",
  "rand 0.9.2",
  "smallvec",
@@ -3275,6 +3276,20 @@ dependencies = [
  "firewheel-core",
  "fixed-resample",
  "symphonium",
+]
+
+[[package]]
+name = "firewheel-web-audio"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d5ce3233a1a818a4f873fd0f9aae01691dc21945f2a0629669b35a0cf9067c86"
+dependencies = [
+ "firewheel",
+ "js-sys",
+ "log",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

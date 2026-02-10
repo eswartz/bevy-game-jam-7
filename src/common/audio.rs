@@ -26,7 +26,11 @@ impl Plugin for AudioCommonPlugin {
 }
 
 /// This drives the volume from the user config point of view.
+///
+/// Our [apply_volumes] system ensures that a corresponding VolumeNode matches
+/// the volume and muted state.
 #[derive(Component)]
+#[require(VolumeNode{ volume: Volume::SILENT, ..default() })]
 pub(crate) struct UserVolume {
     pub volume: Volume,
     pub muted: bool,
@@ -69,10 +73,10 @@ pub(crate) fn initialize_audio(master: Single<Entity, With<MainBus>>, mut comman
         SamplerPool(Sfx),
         sample_effects![(
             SpatialBasicNode {
-                panning_threshold: 1.0,
+                panning_threshold: 0.9,
                 ..default()
             },
-            SpatialScale(Vec3::splat(2.0))
+            SpatialScale(Vec3::splat(5.0))
         )],
         UserVolume {
             volume: DEFAULT_POOL_VOLUME,
@@ -91,13 +95,9 @@ pub(crate) fn initialize_audio(master: Single<Entity, With<MainBus>>, mut comman
 
 /// Apply mute-able UserVolume to VolumeNodes.
 pub(crate) fn apply_volumes(
-    mut commands: Commands,
-    vol_q: Query<(Entity, &UserVolume), Changed<UserVolume>>,
+    mut vol_q: Query<(Entity, &UserVolume, &mut VolumeNode), Changed<UserVolume>>,
 ) {
-    for (ent, vol) in vol_q.iter() {
-        commands.entity(ent).insert(VolumeNode {
-            volume: if vol.muted { Volume::SILENT } else { vol.volume },
-            ..default()
-        });
+    for (_ent, user, mut vol) in vol_q.iter_mut() {
+        vol.volume = if user.muted { Volume::SILENT } else { user.volume };
     }
 }

@@ -64,7 +64,7 @@ pub(crate) fn init_spatial_listener(
     commands.spawn((
         Name::new("Listener"),
         DespawnOnExit(GameplayState::Playing),
-        SpatialListener::default(),
+        SpatialListener3D::default(),
     ));
 }
 
