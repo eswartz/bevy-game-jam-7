@@ -8,7 +8,14 @@ use crate::assets::MapAssets;
 use crate::assets::MusicAssets;
 use crate::audio::AudioPlugin;
 use crate::menus::MenuPlugin;
+use bevy_seedling::prelude::SpatialBasicNode;
+use bevy_seedling::prelude::VolumeNode;
+use bevy_seedling::prelude::PoolLabel;
+use bevy_seedling::sample::PlaybackSettings;
+use bevy_seedling::sample::SamplePlayer;
+use bevy_seedling::sample_effects;
 use common::*;
+use rand::RngExt;
 
 use std::time::Duration;
 
@@ -425,12 +432,44 @@ fn observe_spawn_mesh(
     }
 }
 
+pub(crate) fn spawn_level(
+    mut commands: Commands,
+    map_assets: Res<MapAssets>,
+    world: Single<Entity, With<WorldMarker>>,
+ ) {
+    commands.insert_resource(WorldSetup {
+        waiting_skybox: true,
+        waiting_reflections: false,
+    });
+
+    let level = commands.spawn((
+        SceneRoot(map_assets.level_test.clone()),
+    ))
+        .observe(|_ready: On<SceneInstanceReady>,
+            player_q: Query<&Transform, With<PlayerStart>>,
+            camera_q: Query<Entity, With<Camera3d>>,
+            mut commands: Commands| {
+                if let Ok(xfrm) = player_q.single()
+                && let Ok(camera) = camera_q.single()  {
+                    commands.entity(camera).insert(xfrm.clone());
+                } else {
+                    log::error!("no PlayerStart");
+                }
+
+                commands.insert_resource(Spawning(true));
+                commands.insert_resource(Shake(Vec3::ZERO));
+        }).id();
+
+    commands.entity(*world).add_child(level);
+}
+
 fn spawn_ball(
     mut commands: Commands,
     generator_q: Query<(Entity, &Transform), With<Generator>>,
     time: Res<Time<Physics>>,
     assets: Res<AssetServer>,
     spawning: Res<Spawning>,
+    fx: Res<FxAssets>,
     mut timer: Local<Timer>,
 ) {
     if !spawning.0 {
@@ -444,6 +483,8 @@ fn spawn_ball(
         return;
     }
 
+    let mut rng = rand::rng();
+
     for (_ent, xfrm) in generator_q.iter() {
         commands.spawn((
             SceneRoot(assets.load(
@@ -454,6 +495,18 @@ fn spawn_ball(
         ))
         // .observe(observe_spawn_mesh)
         ;
+        commands.spawn((
+            Sfx,
+            SamplePlayer::new(fx.belch.clone()),
+            PlaybackSettings {
+                speed: rng.random_range(0.75 .. 1.25),
+                ..default()
+            },
+            VolumeNode::from_linear(rng.random_range(0.1f32 .. 1.0f32)),
+
+            xfrm.clone(),
+            sample_effects![SpatialBasicNode::default()],
+        ));
     }
 }
 
@@ -521,17 +574,31 @@ fn shake_base(
     base: Res<Base>,
     shake: Option<Res<Shake>>,
     camera: Query<&GlobalTransform, With<Camera3d>>,
+    fx: Res<FxAssets>,
     mut commands: Commands,
     mut forces: Query<(&Transform, Forces)>,
+    mut shaking: Local<bool>,
 ) {
     if let Ok((xfrm, mut forces)) = forces.get_mut(base.0) {
         if let Some(shake) = shake {
+            // Apply shake.
             if let Ok(xfrm) = camera.single() {
                 let force = shake.0 * 10000.0;
                 forces.apply_local_linear_impulse(xfrm.rotation() * force);
                 commands.remove_resource::<Shake>();
+
+                if !*shaking {
+                    *shaking = true;
+                    commands.spawn((
+                        UiSfx,
+                        SamplePlayer::new(fx.shake.clone()),
+                    ));
+                }
+
             }
         } else {
+            // Come to rest.
+            *shaking = false;
             let diff = xfrm.translation - base.1.translation;
             let vel = forces.linear_velocity();
             if vel.length() > 0.0001 {
@@ -568,35 +635,4 @@ fn check_ball_death(
             }
         }
     }
-}
-
-pub(crate) fn spawn_level(
-    mut commands: Commands,
-    map_assets: Res<MapAssets>,
-    world: Single<Entity, With<WorldMarker>>,
- ) {
-    commands.insert_resource(WorldSetup {
-        waiting_skybox: true,
-        waiting_reflections: false,
-    });
-
-    let level = commands.spawn((
-        SceneRoot(map_assets.level_test.clone()),
-    ))
-        .observe(|_ready: On<SceneInstanceReady>,
-            player_q: Query<&Transform, With<PlayerStart>>,
-            camera_q: Query<Entity, With<Camera3d>>,
-            mut commands: Commands| {
-                if let Ok(xfrm) = player_q.single()
-                && let Ok(camera) = camera_q.single()  {
-                    commands.entity(camera).insert(xfrm.clone());
-                } else {
-                    log::error!("no PlayerStart");
-                }
-
-                commands.insert_resource(Spawning(true));
-                commands.insert_resource(Shake(Vec3::ZERO));
-        }).id();
-
-    commands.entity(*world).add_child(level);
 }

@@ -16,7 +16,13 @@ pub struct FxAssets {
     #[asset(path = "sounds/164472__deleted_user_2104797__crack-of-branch-3.ogg")]
     pub action: Handle<AudioSample>,
     #[asset(path = "sounds/164472__deleted_user_2104797__crack-of-branch-3-rev.ogg")]
-    pub back: Handle<AudioSample>,
+    pub action_rev: Handle<AudioSample>,
+    #[asset(path = "sounds/burp_sound.ogg")]
+    pub belch: Handle<AudioSample>,
+    #[asset(path = "sounds/487531__ranner__bubble-short.ogg")]
+    pub click: Handle<AudioSample>,
+    #[asset(path = "sounds/clip-1-611277__xkeril__footsteps-on-snow-clean.ogg")]
+    pub shake: Handle<AudioSample>,
 }
 
 
