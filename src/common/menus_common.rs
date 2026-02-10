@@ -45,7 +45,7 @@ impl Plugin for MenuCommonPlugin {
         app.add_plugins(InputDispatchPlugin)
             .add_plugins(TabNavigationPlugin)
             .insert_resource(DraggingMenuItem(None))
-            .insert_resource(PreviousMenuItems::default())
+            .insert_resource(MenuItemSelectionHistory::default())
             .insert_resource(PreviousMenuStack::default())
             .add_message::<MenuActionMessage>()
             .add_systems(
@@ -74,9 +74,8 @@ impl Plugin for MenuCommonPlugin {
             .add_systems(
                 Update,
                 (
-                    // record_menu_history.run_if(not(resource_exists::<GoBackInMenuRequest>)),
-                    record_menu_history,
                     handle_menu_back,
+                    handle_menu_into,
                 )
             )
 
@@ -84,91 +83,62 @@ impl Plugin for MenuCommonPlugin {
     }
 }
 
-/// Track how the menu state changes via [OverlayState], gathering into [PreviousMenu].
-fn record_menu_history(mut reader: MessageReader<StateTransitionEvent<OverlayState>>,
-    overlay_state: Res<State<OverlayState>>,
-    going_back: Option<Res<GoBackInMenuRequest>>,
-    // mut commands: Commands,
-    mut prev_menu: ResMut<PreviousMenuStack>,
-) {
-    if going_back.is_some() {
-        return
-    }
-    if reader.is_empty() {
-        return
-    }
-
-    let current = *overlay_state.get();
-    // if current == OverlayState::GoingBack {
-    // if go_back_in_menu.is_some() {
-    //     // Don't alter history, just change to the previous or default state.
-    //     // commands.insert_resource(GoingBack);
-    //     if let Some(prev) = prev_menu.0.pop() {
-    //         // The GoingBack resource is removed in its handler
-    //         commands.set_state(prev);
-    //     } else {
-    //         // Done, no more history.
-    //         commands.remove_resource::<GoBackInMenu>();
-    //         commands.set_state(OverlayState::Hidden);
-    //     }
-    //     return;
-    // }
-
-    // For each StateTransition<OverlayState,
-    // if it represents a target of the current state,
-    // record it in history.
-    for event in reader.read().collect::<Vec<_>>().into_iter().rev() {
-        if let (Some(exited), Some(entered)) = (event.exited, event.entered) {
-            if entered == current {
-                if (entered.is_escape() || entered.is_menu()) && !exited.is_hidden() && !exited.is_escape() {
-                    if let Some(index) = prev_menu.0.iter().position(|x| *x == exited) {
-                        // We hit a loop; clip at the earliest instance.
-                        prev_menu.0.truncate(index);
-                    } else {
-                        prev_menu.0.push(exited);
-                    }
-                    dbg!(&prev_menu.0);
-                }
-                break;
-            }
-        }
-    }
-}
-
 fn handle_menu_back(mut commands: Commands,
-    going_back: Option<Res<GoBackInMenuRequest>>,
+    go_back_in_menu_request: Option<Res<GoBackInMenuRequest>>,
+    overlay_state: Res<State<OverlayState>>,
     mut prev_menu: ResMut<PreviousMenuStack>,
 ) {
     // Inner filtering for clarity.
-    if going_back.is_none() {
+    if go_back_in_menu_request.is_none() {
         return
     }
 
     // Ok, pop something.
-    if let Some(prev) = dbg!(prev_menu.0.pop()) {
+    if let Some(prev) = prev_menu.0.pop() {
         commands.set_state(prev);
-    } else {
+    } else if *overlay_state.get() != OverlayState::MainMenu {
         // Done, no more history.
-        commands.remove_resource::<GoBackInMenuRequest>();
         commands.set_state(OverlayState::Hidden);
     }
 
     // Handled, whether or not it did anything.
     commands.remove_resource::<GoBackInMenuRequest>();
+}
 
-    // if go_back_in_menu.is_some() {
-    //     // Don't alter history, just change to the previous or default state.
-    //     // commands.insert_resource(GoingBack);
-    //     if let Some(prev) = prev_menu.0.pop() {
-    //         // The GoingBack resource is removed in its handler
-    //         commands.set_state(prev);
-    //     } else {
-    //         // Done, no more history.
-    //         commands.remove_resource::<GoBackInMenu>();
-    //         commands.set_state(OverlayState::Hidden);
-    //     }
-    //     return;
-    // }
+fn handle_menu_into(mut commands: Commands,
+    go_into_in_menu_request: Option<Res<GoIntoMenuRequest>>,
+    overlay_state: Res<State<OverlayState>>,
+    mut prev_menu: ResMut<PreviousMenuStack>,
+) {
+    // Inner filtering for clarity.
+    let Some(request) = go_into_in_menu_request else {
+        return;
+    };
+
+    let current = *overlay_state.get();
+    let to_enter: OverlayState = request.0;
+    if current == to_enter {
+        return;
+    }
+
+    // Shall we remember this?
+    let exiting = current;
+    if to_enter.is_menu() {
+        if let Some(index) = prev_menu.0.iter().position(|x| *x == exiting) {
+            // We hit a loop; clip at the earliest instance.
+            prev_menu.0.truncate(index);
+        }
+        prev_menu.0.push(exiting);
+        dbg!(&prev_menu.0);
+
+        // Do it.
+        commands.set_state(to_enter);
+    } else {
+        log::warn!("not a menu: {to_enter:?}");
+    }
+
+    // Handled, whether or not it did anything.
+    commands.remove_resource::<GoIntoMenuRequest>();
 }
 
 pub struct MenuItemBuilder<'w, 's> {
@@ -189,7 +159,7 @@ impl<'w, 's> MenuItemBuilder<'w, 's> {
         program: ProgramState,
         font: Handle<Font>,
         font_scale: f32,
-        previous_items: &PreviousMenuItems,
+        history: &MenuItemSelectionHistory,
     ) -> Self {
         let page = commands
             .spawn((
@@ -215,7 +185,7 @@ impl<'w, 's> MenuItemBuilder<'w, 's> {
             page,
             commands,
             item_index: 0,
-            previous_first_ent_label: previous_items.0.get(&overlay).cloned(),
+            previous_first_ent_label: history.0.get(&overlay).cloned(),
             first_ent_label: None,
         }
     }
@@ -299,9 +269,9 @@ impl<'w, 's> MenuItemBuilder<'w, 's> {
     /// navigated in the menu,
     /// so forward and backward navigation are symmetric when
     /// reentering the menu structure.
-    pub fn finish(&mut self, previous_items: &mut PreviousMenuItems) {
+    pub fn finish(&mut self, history: &mut MenuItemSelectionHistory) {
         if let Some((first_ent, label)) = self.first_ent_label.take() {
-            previous_items
+            history
                 .0
                 .insert(self.overlay, (first_ent, label).clone());
             self.commands.insert_resource(InputFocus(Some(first_ent)));
@@ -325,7 +295,7 @@ pub struct RefreshMenu;
 
 /// Previous menu items.
 #[derive(Resource, Debug, Default)]
-pub(crate) struct PreviousMenuItems(HashMap<OverlayState, (Entity, String)>);
+pub(crate) struct MenuItemSelectionHistory(HashMap<OverlayState, (Entity, String)>);
 
 /// Menu stack, where new states are added on entry, and popped on
 /// SimpleMenuAction::Back operations.
@@ -337,6 +307,12 @@ pub(crate) struct PreviousMenuStack(pub Vec<OverlayState>);
 /// When handled, it is removed and OverlayState is changed if possible.
 #[derive(Resource, Debug, Default, Clone)]
 pub struct GoBackInMenuRequest;
+
+/// A client defines this resource to request going into a specific menu.
+/// This specific form, vs. just setting the OverlayState directly,
+/// implies keeping history via `PreviousMenuStack`.
+#[derive(Resource, Debug, Default, Clone)]
+pub struct GoIntoMenuRequest(pub OverlayState);
 
 /////
 
@@ -916,8 +892,8 @@ fn handle_menu_action(world: &mut World) {
             let handler = item.0.clone();
             let text = text.0.clone();
 
-            if let Some(mut previous_items) = world.get_resource_mut::<PreviousMenuItems>() {
-                previous_items.0.insert(overlay_state, (menu_item, text));
+            if let Some(mut history) = world.get_resource_mut::<MenuItemSelectionHistory>() {
+                history.0.insert(overlay_state, (menu_item, text));
             }
 
             handler

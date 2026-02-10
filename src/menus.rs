@@ -56,7 +56,7 @@ pub(crate) enum SimpleMenuActions {
 }
 
 impl MenuItemHandler for SimpleMenuActions {
-    fn handle(&mut self, world: &mut World, event: &MenuActionMessage) {
+    fn handle(&mut self, world: &mut World, message: &MenuActionMessage) {
         // let program_state = *world.get_resource::<State<ProgramState>>().unwrap().get();
         // let overlay_state = *world.get_resource::<State<OverlayState>>().unwrap().get();
         let mut paused = world
@@ -66,32 +66,37 @@ impl MenuItemHandler for SimpleMenuActions {
         let mut queue = CommandQueue::default();
         let mut commands = Commands::new(&mut queue, world);
 
-        match event {
+        match message {
             MenuActionMessage::Navigate(_) => (),
             MenuActionMessage::Activate(_) | MenuActionMessage::Next(_) => match self {
+                SimpleMenuActions::Back => {
+                    commands.insert_resource(GoBackInMenuRequest);
+                }
                 SimpleMenuActions::PlayGame => {
                     start_game(commands.reborrow());
                 }
                 SimpleMenuActions::GameMenu => {
-                    commands.set_state(OverlayState::GameMenu);
+                    // commands.set_state(OverlayState::GameMenu);
+                    commands.insert_resource(GoIntoMenuRequest(OverlayState::GameMenu));
                 }
                 SimpleMenuActions::OptionsMenu => {
-                    commands.set_state(OverlayState::OptionsMenu);
+                    // commands.set_state(OverlayState::OptionsMenu);
+                    commands.insert_resource(GoIntoMenuRequest(OverlayState::OptionsMenu));
                 }
                 SimpleMenuActions::AudioMenu => {
-                    commands.set_state(OverlayState::AudioMenu);
+                    // commands.set_state(OverlayState::AudioMenu);
+                    commands.insert_resource(GoIntoMenuRequest(OverlayState::AudioMenu));
                 }
                 SimpleMenuActions::VideoMenu => {
-                    commands.set_state(OverlayState::VideoMenu);
+                    // commands.set_state(OverlayState::VideoMenu);
+                    commands.insert_resource(GoIntoMenuRequest(OverlayState::VideoMenu));
                 }
                 SimpleMenuActions::ControlsMenu => {
-                    commands.set_state(OverlayState::ControlsMenu);
+                    // commands.set_state(OverlayState::ControlsMenu);
+                    commands.insert_resource(GoIntoMenuRequest(OverlayState::ControlsMenu));
                 }
                 SimpleMenuActions::Quit => {
                     commands.insert_resource(ExitRequest);
-                }
-                SimpleMenuActions::Back => {
-                    commands.insert_resource(GoBackInMenuRequest);
                 }
                 SimpleMenuActions::ResumeGame => {
                     paused.set_menu_paused(false);
@@ -101,8 +106,6 @@ impl MenuItemHandler for SimpleMenuActions {
                 SimpleMenuActions::StopGame => {
                     paused.set_menu_paused(false);
                     commands.insert_resource(paused);
-                    // commands.set_state(OverlayState::GoingBack);
-                    // commands.set_state(OverlayState::GoingBack);
                     commands.set_state(ProgramState::LaunchMenu);
                     commands.set_state(GameplayState::New);
                 }
@@ -125,7 +128,7 @@ impl MenuItemHandler for SimpleMenuActions {
 fn on_enter_main_menu(
     mut commands: Commands,
     fonts: Res<GuiAssets>,
-    mut previous_items: ResMut<PreviousMenuItems>,
+    mut history: ResMut<MenuItemSelectionHistory>,
     // mut glyph_mats: ResMut<Assets<TitleShader>>,
     product_name: Res<ProductName>,
 ) {
@@ -178,13 +181,13 @@ fn on_enter_main_menu(
         ProgramState::LaunchMenu,
         fonts.std_ui.clone(),
         1.0,
-        &previous_items,
+        &history,
     )
     .add_item("Play", (), SimpleMenuActions::PlayGame)
     // .add_item("Game", (), SimpleMenuActions::GameMenu)
     .add_item("Options", (), SimpleMenuActions::OptionsMenu)
     .add_item("Quit", (), SimpleMenuActions::Quit)
-    .finish(&mut previous_items);
+    .finish(&mut history);
 }
 
 // #[derive(Default, Debug, Clone, AsBindGroup, Asset, Reflect, Component, DynamicEffect)]
@@ -209,7 +212,7 @@ fn on_enter_game_menu(
     fonts: Res<GuiAssets>,
     program_state: Res<State<ProgramState>>,
     /*mut*/ commands: Commands,
-    mut previous_items: ResMut<PreviousMenuItems>,
+    mut history: ResMut<MenuItemSelectionHistory>,
     // level_regy: Res<LevelRegistry>,
 ) {
     macro_rules! make_res_enum_getter_setter {
@@ -254,7 +257,7 @@ fn on_enter_game_menu(
         *program_state.get(),
         fonts.std_ui.clone(),
         1.0,
-        &previous_items,
+        &history,
     )
     // .add_item(
     //     "Level",
@@ -277,14 +280,14 @@ fn on_enter_game_menu(
     //     EnumMenuActions::DifficultyEnum,
     // )
     .add_item("Back", (), SimpleMenuActions::Back)
-    .finish(&mut previous_items);
+    .finish(&mut history);
 }
 
 fn on_enter_options_menu(
     fonts: Res<GuiAssets>,
     commands: Commands,
     program_state: Res<State<ProgramState>>,
-    mut previous_items: ResMut<PreviousMenuItems>,
+    mut history: ResMut<MenuItemSelectionHistory>,
 ) {
     MenuItemBuilder::new(
         commands,
@@ -292,19 +295,19 @@ fn on_enter_options_menu(
         *program_state.get(),
         fonts.std_ui.clone(),
         1.0,
-        &previous_items,
+        &history,
     )
     .add_item("Audio", (), SimpleMenuActions::AudioMenu)
     .add_item("Video", (), SimpleMenuActions::VideoMenu)
     .add_item("Controls", (), SimpleMenuActions::ControlsMenu)
     .add_item("Back", (), SimpleMenuActions::Back)
-    .finish(&mut previous_items);
+    .finish(&mut history);
 }
 
 fn on_enter_escape_menu(
     fonts: Res<GuiAssets>,
     commands: Commands,
-    mut previous_items: ResMut<PreviousMenuItems>,
+    mut history: ResMut<MenuItemSelectionHistory>,
     // level_regy: Res<LevelRegistry>,
     // level_id: Res<LevelId>,
 ) {
@@ -314,7 +317,7 @@ fn on_enter_escape_menu(
         ProgramState::InGame,
         fonts.std_ui.clone(),
         1.0,
-        &previous_items,
+        &history,
     )
     // .add_item(format!("Resume ({})", level_regy.level_name(&level_id.0)),
     // (), SimpleMenuActions::ResumeGame)
@@ -323,7 +326,7 @@ fn on_enter_escape_menu(
     .add_item("Controls", (), SimpleMenuActions::ControlsMenu)
     .add_item("Stop", (), SimpleMenuActions::StopGame)
     .add_item("Back", (), SimpleMenuActions::Back)
-    .finish(&mut previous_items);
+    .finish(&mut history);
 }
 
 fn on_exit_escape_menu() {}
@@ -381,7 +384,7 @@ fn on_enter_audio_menu(
     mut commands: Commands,
     program_state: Res<State<ProgramState>>,
     overlay_state: Res<State<OverlayState>>,
-    mut previous_items: ResMut<PreviousMenuItems>,
+    mut history: ResMut<MenuItemSelectionHistory>,
     // mut master_vol_q: Single<&mut UserVolume, With<MainBus>>,
     // mut music_vol_q: Single<&mut UserVolume, With<SamplerPool<Music>>>,
     // mut fx_vol_q: Single<&mut UserVolume, With<SamplerPool<Sfx>>>,
@@ -439,7 +442,7 @@ fn on_enter_audio_menu(
         *program_state.get(),
         fonts.std_ui.clone(),
         1.0,
-        &previous_items,
+        &history,
     )
     .add_item(
         "Master Volume",
@@ -474,7 +477,7 @@ fn on_enter_audio_menu(
         VolumeMenuActions::UiVolumeSlider,
     )
     .add_item("Back", (), SimpleMenuActions::Back)
-    .finish(&mut previous_items);
+    .finish(&mut history);
 }
 
 enum ControlMenuToggleActions {
@@ -488,9 +491,8 @@ impl MenuItemHandler for ControlMenuToggleActions {}
 fn on_enter_controls_menu(
     fonts: Res<GuiAssets>,
     program_state: Res<State<ProgramState>>,
-    overlay_state: Res<State<OverlayState>>,
-    mut commands: Commands,
-    mut previous_items: ResMut<PreviousMenuItems>,
+    commands: Commands,
+    mut history: ResMut<MenuItemSelectionHistory>,
 ) {
     // Scales are edited logarithmically.
     fn sens_to_ui(v: f32) -> f32 {
@@ -552,7 +554,7 @@ fn on_enter_controls_menu(
         *program_state.get(),
         fonts.std_ui.clone(),
         0.75,
-        &previous_items,
+        &history,
     )
     // .add_item(
     //     "Move Left/Right Power",
@@ -655,14 +657,14 @@ fn on_enter_controls_menu(
     //     MenuToggle::new(get_invert_zoom_y, set_invert_zoom_y),
     // ), ControlMenuToggleActions::ZoomInvertY)
     .add_item("Back", (), SimpleMenuActions::Back)
-    .finish(&mut previous_items);
+    .finish(&mut history);
 }
 
 fn on_enter_video_menu(
     fonts: Res<GuiAssets>,
     program_state: Res<State<ProgramState>>,
     mut commands: Commands,
-    mut previous_items: ResMut<PreviousMenuItems>,
+    mut history: ResMut<MenuItemSelectionHistory>,
 ) {
     let get_fov = commands.register_system(IntoSystem::into_system(
         |In(entity): In<Entity>, s: Res<VideoSettings>, mut slider_q: Query<&mut MenuSlider>| {
@@ -708,7 +710,7 @@ fn on_enter_video_menu(
         *program_state.get(),
         fonts.std_ui.clone(),
         1.0,
-        &previous_items,
+        &history,
     )
     .add_item(
         "Field of View",
@@ -764,7 +766,7 @@ fn on_enter_video_menu(
         EnumMenuActions::TextureQualityEnum,
     )
     .add_item("Back", (), SimpleMenuActions::Back)
-    .finish(&mut previous_items);
+    .finish(&mut history);
 }
 
 fn start_game(mut commands: Commands) {
