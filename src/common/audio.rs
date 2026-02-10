@@ -67,6 +67,7 @@ pub(crate) fn initialize_audio(master: Single<Entity, With<MainBus>>, mut comman
             volume: DEFAULT_POOL_VOLUME,
             muted: false,
         },
+        PoolSize(2 ..= 4),
     ));
     commands.spawn((
         Name::new("SFX"),
@@ -82,6 +83,7 @@ pub(crate) fn initialize_audio(master: Single<Entity, With<MainBus>>, mut comman
             volume: DEFAULT_POOL_VOLUME,
             muted: false,
         },
+        PoolSize(8 ..= 256),
     ));
     commands.spawn((
         Name::new("UI"),
@@ -90,6 +92,7 @@ pub(crate) fn initialize_audio(master: Single<Entity, With<MainBus>>, mut comman
             volume: DEFAULT_POOL_VOLUME,
             muted: false,
         },
+        PoolSize(2 ..= 8),
     ));
 }
 

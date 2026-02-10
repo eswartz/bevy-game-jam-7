@@ -528,7 +528,7 @@ fn spawn_ball(
 
             // To avoid https://github.com/CorvusPrudens/bevy_seedling/issues/87
             sample_effects![SpatialBasicNode {
-                offset: Vec3::new(1000.0, 1000.0, 1000.0).into(),
+                offset: Vec3::new(10.0, 10.0, 10.0).into(),
                 ..default()
             }],
 
