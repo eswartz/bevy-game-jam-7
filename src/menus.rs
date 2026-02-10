@@ -5,24 +5,11 @@ use bevy::sprite::Text2dShadow;
 use bevy_seedling::pool::SamplerPool;
 use bevy_seedling::prelude::MainBus;
 use bevy_seedling::prelude::Volume;
-use bevy_seedling::prelude::VolumeNode;
-use bevy_seedling::sample::SamplePlayer;
 // use bevy_pretty_text::prelude::*;
 use strum::VariantArray;
 
 use crate::ExitRequest;
-use crate::audio::FxAssets;
-use crate::audio::Music;
-use crate::audio::Sfx;
-use crate::audio::UiSfx;
-use crate::audio::UserVolume;
-use crate::gui::GuiAssets;
-use crate::lifecycle::PauseState;
-use crate::product::ProductName;
-
-use crate::menus_common::*;
-use crate::states_sets::*;
-use crate::video::*;
+use crate::common::*;
 
 pub struct MenuPlugin;
 impl Plugin for MenuPlugin {
@@ -70,11 +57,15 @@ pub(crate) enum SimpleMenuActions {
 
 impl MenuItemHandler for SimpleMenuActions {
     fn handle(&mut self, world: &mut World, event: &MenuActionMessage) {
-        let program_state = *world.get_resource::<State<ProgramState>>().unwrap().get();
-        let fx = world.get_resource::<FxAssets>().unwrap();
+        // let program_state = *world.get_resource::<State<ProgramState>>().unwrap().get();
+        // let overlay_state = *world.get_resource::<State<OverlayState>>().unwrap().get();
+        let mut paused = world
+            .get_resource::<PauseState>()
+            .cloned()
+            .unwrap_or_default();
         let mut queue = CommandQueue::default();
         let mut commands = Commands::new(&mut queue, world);
-        let mut was_back = false;
+
         match event {
             MenuActionMessage::Navigate(_) => (),
             MenuActionMessage::Activate(_) | MenuActionMessage::Next(_) => match self {
@@ -100,52 +91,26 @@ impl MenuItemHandler for SimpleMenuActions {
                     commands.insert_resource(ExitRequest);
                 }
                 SimpleMenuActions::Back => {
-                    was_back = true;
-                    if program_state == ProgramState::InGame {
-                        commands.set_state(OverlayState::EscapeMenu);
-                    } else {
-                        commands.set_state(OverlayState::MainMenu);
-                    }
+                    commands.insert_resource(GoBackInMenuRequest);
                 }
                 SimpleMenuActions::ResumeGame => {
-                    let mut paused = world
-                        .get_resource::<PauseState>()
-                        .cloned()
-                        .unwrap_or_default();
                     paused.set_menu_paused(false);
                     commands.insert_resource(paused);
                     commands.set_state(OverlayState::Hidden);
                 }
                 SimpleMenuActions::StopGame => {
-                    was_back = true;
-                    let mut paused = world
-                        .get_resource::<PauseState>()
-                        .cloned()
-                        .unwrap_or_default();
                     paused.set_menu_paused(false);
                     commands.insert_resource(paused);
-                    commands.set_state(OverlayState::Hidden);
+                    // commands.set_state(OverlayState::GoingBack);
+                    // commands.set_state(OverlayState::GoingBack);
                     commands.set_state(ProgramState::LaunchMenu);
                     commands.set_state(GameplayState::New);
-                    // commands.insert_resource(DisconnectFromServer);
                 }
             },
-            MenuActionMessage::Reset(_) => {
-                was_back = true;
-            }
+            MenuActionMessage::Reset(_) => (),
             MenuActionMessage::Previous(_) => (),
             MenuActionMessage::Slide(..) => (),
         }
-
-        commands.spawn((
-            UiSfx,
-            SamplePlayer::new(if was_back {
-                fx.back.clone()
-            } else {
-                fx.action.clone()
-            }),
-        ));
-
         queue.apply(world);
     }
 }
@@ -243,7 +208,7 @@ fn on_enter_main_menu(
 fn on_enter_game_menu(
     fonts: Res<GuiAssets>,
     program_state: Res<State<ProgramState>>,
-    mut commands: Commands,
+    /*mut*/ commands: Commands,
     mut previous_items: ResMut<PreviousMenuItems>,
     // level_regy: Res<LevelRegistry>,
 ) {
@@ -357,6 +322,7 @@ fn on_enter_escape_menu(
     .add_item("Video", (), SimpleMenuActions::VideoMenu)
     .add_item("Controls", (), SimpleMenuActions::ControlsMenu)
     .add_item("Stop", (), SimpleMenuActions::StopGame)
+    .add_item("Back", (), SimpleMenuActions::Back)
     .finish(&mut previous_items);
 }
 
@@ -414,6 +380,7 @@ fn on_enter_audio_menu(
     fonts: Res<GuiAssets>,
     mut commands: Commands,
     program_state: Res<State<ProgramState>>,
+    overlay_state: Res<State<OverlayState>>,
     mut previous_items: ResMut<PreviousMenuItems>,
     // mut master_vol_q: Single<&mut UserVolume, With<MainBus>>,
     // mut music_vol_q: Single<&mut UserVolume, With<SamplerPool<Music>>>,
@@ -521,6 +488,7 @@ impl MenuItemHandler for ControlMenuToggleActions {}
 fn on_enter_controls_menu(
     fonts: Res<GuiAssets>,
     program_state: Res<State<ProgramState>>,
+    overlay_state: Res<State<OverlayState>>,
     mut commands: Commands,
     mut previous_items: ResMut<PreviousMenuItems>,
 ) {
@@ -751,7 +719,7 @@ fn on_enter_video_menu(
             |v| v,
             |v| v.round(),
             5.0f32..=120.0f32,
-            1.0,
+            5.0,
         ),
         SliderMenuActions::FovSlider,
     )

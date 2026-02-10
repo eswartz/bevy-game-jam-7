@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use bevy::prelude::*;
 use bevy_egui::{EguiContext, EguiContexts, EguiPrimaryContextPass, PrimaryEguiContext};
 
-use crate::{gui::GuiState, states_sets::OverlayState};
+use super::{gui::GuiState, states_sets::OverlayState};
 
 pub struct DebugPlugin;
 

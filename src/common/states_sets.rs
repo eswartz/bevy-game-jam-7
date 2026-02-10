@@ -29,6 +29,29 @@ pub enum OverlayState {
     DebugGuiVisible,
 }
 
+impl OverlayState {
+    pub fn is_hidden(&self) -> bool {
+        *self == Self::Hidden
+    }
+    pub fn is_menu(&self) -> bool {
+        matches!(self,
+            Self::MainMenu
+            | Self::GameMenu
+            | Self::OptionsMenu
+            | Self::AudioMenu
+            | Self::VideoMenu
+            | Self::ControlsMenu
+            | Self::EscapeMenu
+        )
+    }
+    pub fn is_debug(&self) -> bool {
+        *self == Self::DebugGuiVisible
+    }
+    pub fn is_escape(&self) -> bool {
+        *self == Self::EscapeMenu
+    }
+}
+
 
 /// State machine for overall program behavior.
 #[derive(States, Reflect, Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -77,24 +100,6 @@ pub enum GameplayState {
     Playing,
 }
 
-
-impl OverlayState {
-    pub fn is_hidden(&self) -> bool {
-        *self == Self::Hidden
-    }
-    pub fn is_menu(&self) -> bool {
-        *self == Self::MainMenu
-        || *self == Self::GameMenu
-        || *self == Self::OptionsMenu
-        || *self == Self::AudioMenu
-        || *self == Self::VideoMenu
-        || *self == Self::ControlsMenu
-        || *self == Self::EscapeMenu
-    }
-    pub fn is_debug(&self) -> bool {
-        *self == Self::DebugGuiVisible
-    }
-}
 
 /// State of a level (there is only one level in play at a time).
 #[derive(SubStates, Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Reflect)]

@@ -9,11 +9,11 @@ use bevy_asset_loader::prelude::*;
 use bevy_inspector_egui::DefaultInspectorConfigPlugin;
 use bevy_seedling::prelude::MainBus;
 
-use crate::audio::UserVolume;
-use crate::lifecycle::PauseState;
-use crate::states_sets::OverlayState;
-use crate::states_sets::ProgramState;
-use crate::world_state::SkyboxModel;
+use super::audio::UserVolume;
+use super::lifecycle::PauseState;
+use super::states_sets::OverlayState;
+use super::states_sets::ProgramState;
+use super::world_state::SkyboxModel;
 
 pub struct GuiPlugin;
 impl Plugin for GuiPlugin {

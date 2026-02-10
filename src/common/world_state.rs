@@ -13,20 +13,17 @@ use bevy_asset_loader::loading_state::LoadingState;
 use bevy_asset_loader::loading_state::LoadingStateAppExt as _;
 use image::imageops::FilterType;
 
-use crate::PlayerStart;
-use crate::Shake;
-use crate::Spawning;
-use crate::audio::MusicAssets;
-use crate::lifecycle::PauseState;
-use crate::states_sets::GameplayState;
-use crate::states_sets::LevelState;
-use crate::states_sets::OverlayState;
-use crate::states_sets::ProgramState;
-use crate::texutils::SkyboxTransform;
-use crate::texutils::convert_strip_to_cubemap;
-use crate::texutils::resize_for_quality;
-use crate::video::TextureQuality;
-use crate::video::VideoSettings;
+use crate::common::*;
+use super::lifecycle::PauseState;
+use super::states_sets::GameplayState;
+use super::states_sets::LevelState;
+use super::states_sets::OverlayState;
+use super::states_sets::ProgramState;
+use super::texutils::SkyboxTransform;
+use super::texutils::convert_strip_to_cubemap;
+use super::texutils::resize_for_quality;
+use super::video::TextureQuality;
+use super::video::VideoSettings;
 
 pub struct WorldStatePlugin;
 
@@ -37,16 +34,16 @@ impl Plugin for WorldStatePlugin {
             .register_type::<NextLevelIndex>()
             // .register_type::<DecorateGltfMeshes>()
             .insert_resource(Gravity((9.8 * Vec3::NEG_Y).into()))
-            .add_loading_state(
-                LoadingState::new(GameplayState::AssetsLoading)
-                    .continue_to_state(GameplayState::AssetsLoaded)
-                    .load_collection::<SkyboxAssets>()
-                    // .load_collection::<SoundFxAssets>()
-                    // .load_collection::<VoiceAssets>()
-                    .load_collection::<MusicAssets>()
-                    // .load_collection::<IconAssets>()
-                    .load_collection::<MapAssets>()
-            )
+            // .add_loading_state(
+            //     LoadingState::new(GameplayState::AssetsLoading)
+            //         .continue_to_state(GameplayState::AssetsLoaded)
+            //         .load_collection::<SkyboxAssets>()
+            //         // .load_collection::<SoundFxAssets>()
+            //         // .load_collection::<VoiceAssets>()
+            //         // .load_collection::<MusicAssets>()
+            //         // .load_collection::<IconAssets>()
+            //         .load_collection::<MapAssets>()
+            // )
             .add_systems(OnEnter(GameplayState::AssetsLoaded),
                 (
                     transition_from_loading,
@@ -64,25 +61,25 @@ impl Plugin for WorldStatePlugin {
                 start_next_level,
             )
 
-            // First time running.
-            .add_systems(OnEnter(GameplayState::Setup),
-                (
-                    spawn_level,
-                )
-                .chain()
-                // .in_set(SimulationSystems)
-                // .run_if(in_state(ProgramState::InGame)) // redundant
-            )
-            // Between levels.
-            .add_systems(OnExit(LevelState::Advance),
-                (
-                    despawn_world,
-                    start_next_level,
-                )
-                .chain()
-                // .run_if(in_state(ProgramState::InGame)) // redundant
-                // .in_set(SimulationSystems)
-            )
+            // // First time running.
+            // .add_systems(OnEnter(GameplayState::Setup),
+            //     (
+            //         spawn_level,
+            //     )
+            //     .chain()
+            //     // .in_set(SimulationSystems)
+            //     // .run_if(in_state(ProgramState::InGame)) // redundant
+            // )
+            // // Between levels.
+            // .add_systems(OnExit(LevelState::Advance),
+            //     (
+            //         despawn_world,
+            //         start_next_level,
+            //     )
+            //     .chain()
+            //     // .run_if(in_state(ProgramState::InGame)) // redundant
+            //     // .in_set(SimulationSystems)
+            // )
 
             // .add_systems(OnEnter(LevelState::Setup),
             //     start_level_setup,
@@ -131,8 +128,8 @@ impl Plugin for WorldStatePlugin {
 #[reflect(Resource, Default)]
 #[type_path = "game"]
 pub(crate) struct WorldSetup {
-    waiting_skybox: bool,
-    waiting_reflections: bool,
+    pub(crate) waiting_skybox: bool,
+    pub(crate) waiting_reflections: bool,
 }
 
 
@@ -158,6 +155,11 @@ impl Default for WorldMarker {
     }
 }
 
+#[derive(Component, Reflect, Default)]
+#[reflect(Component, Default)]
+#[type_path = "game"]
+pub struct PlayerStart;
+
 /// This marks an entity playing an AudioCue as background music / sound.
 #[derive(Component, Clone, Reflect)]
 // #[require(Saveable)]
@@ -165,58 +167,16 @@ impl Default for WorldMarker {
 #[type_path = "game"]
 pub struct BackgroundAudio;
 
-// #[derive(Resource, Debug, Clone, Copy, PartialEq, Default, Reflect, EnumIter, strum_macros::Display, VariantArray)]
-// #[reflect(Resource, Default)]
-// #[type_path = "game"]
-
-// pub enum StartLevelChoice {
-//     #[strum(to_string = "Test")]
-//     Test,
-//     #[strum(to_string = "Tutorial 1")]
-//     #[default]
-//     Tutorial1,
-//     #[strum(to_string = "Tutorial 2")]
-//     Tutorial2,
-// }
-
 /// When defined, requests to change to the given level by index.
 #[derive(Resource, Default, Reflect)]
 #[reflect(Resource, Default)]
 pub struct NextLevelIndex(pub usize);
 
-// fn setup_world_bounds(
-//     mut commands: Commands,
-//     mut world_q: Query<(Entity, &mut WorldMarker)>,
-//     child_q: Query<&Children>,
-//     aabb_q: Query<&Aabb>,
-// ) {
-//     commands.set_state(OverlayState::Hidden);
-
-//     if let Ok((world_ent, mut marker)) = world_q.single_mut() {
-//         let mut aabb3d = Aabb3d::new(Vec3::ZERO, Vec3::ONE);
-//         child_q.iter_descendants(world_ent).for_each(|ent| {
-//             if let Ok(aabb) = aabb_q.get(ent) {
-//                 aabb3d.min = aabb3d.min.min(aabb.min());
-//                 aabb3d.max = aabb3d.max.max(aabb.max());
-//             }
-//         });
-//         marker.0 = aabb3d;
-//     }
-// }
 
 fn transition_from_loading(
     mut commands: Commands,
-    // mut next_mode_state: ResMut<NextState<GameplayState>>,
-    // post_asset_loading_state: Option<Res<SetStateAfterReload<GameplayState>>>
 ) {
-    // if let Some(mode) = &post_asset_loading_state {
-    //     // Reloading from save.
-    //     next_mode_state.set(mode.0);
-    //     commands.insert_resource(State::new(GameplayState::New));
-    //     commands.remove_resource::<SetStateAfterReload<GameplayState>>();
-    // } else {
     commands.set_state(GameplayState::Setup);
-    // }
 }
 
 #[derive(Resource, AssetCollection)]
@@ -474,12 +434,6 @@ pub(crate) fn check_load_reflection_probe(
     setup.waiting_reflections = false;
 }
 
-#[derive(Resource, AssetCollection)]
-pub struct MapAssets {
-    #[asset(path = "test.glb#Scene0")]
-    pub level_test: Handle<Scene>,
-}
-
 pub(crate) fn setup_world_marker(
     mut commands: Commands,
 ) {
@@ -519,37 +473,36 @@ fn check_level_setup(
     }
 }
 
+// pub(crate) fn spawn_level(
+//     mut commands: Commands,
+//     map_assets: Res<MapAssets>,
+//     world: Single<Entity, With<WorldMarker>>,
+//  ) {
+//     commands.insert_resource(WorldSetup {
+//         waiting_skybox: true,
+//         waiting_reflections: false,
+//     });
 
-pub(crate) fn spawn_level(
-    mut commands: Commands,
-    map_assets: Res<MapAssets>,
-    world: Single<Entity, With<WorldMarker>>,
- ) {
-    commands.insert_resource(WorldSetup {
-        waiting_skybox: true,
-        waiting_reflections: false,
-    });
+//     let level = commands.spawn((
+//         SceneRoot(map_assets.level_test.clone()),
+//     ))
+//         .observe(|_ready: On<SceneInstanceReady>,
+//             player_q: Query<&Transform, With<PlayerStart>>,
+//             camera_q: Query<Entity, With<Camera3d>>,
+//             mut commands: Commands| {
+//                 if let Ok(xfrm) = player_q.single()
+//                 && let Ok(camera) = camera_q.single()  {
+//                     commands.entity(camera).insert(xfrm.clone());
+//                 } else {
+//                     log::error!("no PlayerStart");
+//                 }
 
-    let level = commands.spawn((
-        SceneRoot(map_assets.level_test.clone()),
-    ))
-        .observe(|_ready: On<SceneInstanceReady>,
-            player_q: Query<&Transform, With<PlayerStart>>,
-            camera_q: Query<Entity, With<Camera3d>>,
-            mut commands: Commands| {
-                if let Ok(xfrm) = player_q.single()
-                && let Ok(camera) = camera_q.single()  {
-                    commands.entity(camera).insert(xfrm.clone());
-                } else {
-                    log::error!("no PlayerStart");
-                }
+//                 commands.insert_resource(Spawning(true));
+//                 commands.insert_resource(Shake(Vec3::ZERO));
+//         }).id();
 
-                commands.insert_resource(Spawning(true));
-                commands.insert_resource(Shake(Vec3::ZERO));
-        }).id();
-
-    commands.entity(*world).add_child(level);
-}
+//     commands.entity(*world).add_child(level);
+// }
 
 pub(crate) fn despawn_world(
     world: Single<Entity, With<WorldMarker>>,

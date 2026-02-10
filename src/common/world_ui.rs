@@ -14,15 +14,15 @@ use bevy::render::view::ColorGrading;
 use bevy::render::view::ColorGradingGlobal;
 use bevy::render::view::ColorGradingSection;
 
-use crate::states_sets::GameplayState;
-use crate::states_sets::ProgramState;
-use crate::video::Antialiasing;
-use crate::video::GlassQuality;
-use crate::video::VideoCameraSettingsChanged;
-use crate::video::VideoEffectSettingsChanged;
-use crate::video::VideoSettings;
-use crate::world_state::SkyboxAssets;
-use crate::world_state::SkyboxModel;
+use super::states_sets::GameplayState;
+use super::states_sets::ProgramState;
+use super::video::Antialiasing;
+use super::video::GlassQuality;
+use super::video::VideoCameraSettingsChanged;
+use super::video::VideoEffectSettingsChanged;
+use super::video::VideoSettings;
+use super::world_state::SkyboxAssets;
+use super::world_state::SkyboxModel;
 
 pub struct WorldUiPlugin;
 

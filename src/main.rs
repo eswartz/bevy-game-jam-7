@@ -1,36 +1,14 @@
-mod actions;
-mod audio;
-mod debug;
-mod gui;
-mod lifecycle;
-mod markers;
+mod common;
 mod menus;
-mod menus_common;
-mod product;
-mod states_sets;
-mod texutils;
-mod video;
-mod world_state;
-mod world_ui;
-// mod level_state;
+mod assets;
+mod audio;
 
-use crate::actions::ActionPlugin;
-use crate::actions::UserAction;
-use crate::audio::*;
-use crate::debug::*;
-use crate::gui::GuiPlugin;
-use crate::lifecycle::LifecyclePlugin;
-use crate::lifecycle::PauseState;
+use crate::assets::FxAssets;
+use crate::assets::MapAssets;
+use crate::assets::MusicAssets;
+use crate::audio::AudioPlugin;
 use crate::menus::MenuPlugin;
-use crate::menus_common::MenuActionMessage;
-use crate::product::PRODUCT_NAME;
-use crate::product::ProductName;
-use crate::states_sets::*;
-use crate::video::VideoCameraSettingsChanged;
-use crate::video::VideoEffectSettingsChanged;
-use crate::video::VideoSettings;
-use crate::world_state::WorldStatePlugin;
-use crate::world_ui::WorldUiPlugin;
+use common::*;
 
 use std::time::Duration;
 
@@ -56,18 +34,12 @@ use bevy::{
     winit::WinitSettings,
 };
 use bevy_asset_loader::prelude::*;
-use bevy_egui::input::egui_wants_any_input;
 use bevy_egui::input::egui_wants_any_keyboard_input;
 use bevy_egui::{EguiGlobalSettings, EguiPlugin};
 use bevy_seedling::SeedlingPlugin;
 use bevy_seedling::prelude::MainBus;
 use bevy_skein::SkeinPlugin;
 use leafwing_input_manager::prelude::ActionState;
-
-#[derive(Component, Reflect, Default)]
-#[reflect(Component, Default)]
-#[type_path = "game"]
-struct PlayerStart;
 
 #[derive(Component, Reflect, Default)]
 #[reflect(Component, Default)]
@@ -149,9 +121,6 @@ fn main() {
                 bevy::dev_tools::states::log_transitions::<OverlayState>,
             ),
         )
-        .add_loading_state(
-            LoadingState::new(ProgramState::Initializing).continue_to_state(ProgramState::New),
-        )
         //////
         .add_plugins(EguiPlugin::default())
         .insert_resource(EguiGlobalSettings {
@@ -169,9 +138,6 @@ fn main() {
             },
         )
         ////////
-        .add_plugins(SeedlingPlugin::default())
-        .add_systems(OnEnter(ProgramState::InGame), initialize_audio)
-        ////////
         // Custom exit handling.
         .add_systems(
             First,
@@ -182,6 +148,11 @@ fn main() {
                 .chain(),
         )
         //////
+
+        .add_loading_state(
+            LoadingState::new(ProgramState::Initializing).continue_to_state(ProgramState::New),
+        )
+
         .add_plugins(ActionPlugin)
         .add_plugins(MenuPlugin)
         .add_plugins(LifecyclePlugin)
@@ -191,6 +162,21 @@ fn main() {
         .add_plugins(WorldStatePlugin)
         .add_plugins(DebugPlugin)
         .add_plugins(AudioPlugin)
+
+        // .add_loading_state(
+        //         LoadingState::new(ProgramState::Initializing)
+        //             .load_collection::<MusicAssets>()
+        //             .load_collection::<FxAssets>()
+        //     )
+
+        .add_loading_state(
+                LoadingState::new(GameplayState::AssetsLoading)
+                    .continue_to_state(GameplayState::AssetsLoaded)
+                    .load_collection::<SkyboxAssets>()
+                    // .load_collection::<IconAssets>()
+                    .load_collection::<MapAssets>()
+            )
+
         .add_systems(OnEnter(ProgramState::Initializing), on_enter_initializing)
         .add_systems(
             OnEnter(ProgramState::New),
@@ -214,6 +200,7 @@ fn main() {
         )
         .insert_resource(VideoSettings::default())
         ////////
+        .init_state::<ProgramState>()
         .init_state::<GameplayState>()
         .init_state::<LevelState>()
         .insert_resource(ProductName(PRODUCT_NAME.to_string()))
@@ -230,6 +217,15 @@ fn main() {
                 .run_if(egui_not_initialized)
                 .run_if(in_state(GameplayState::Playing)),
         )
+
+        .add_systems(OnEnter(GameplayState::Setup),
+            (
+                spawn_level,
+            )
+            .chain()
+            // .in_set(SimulationSystems)
+            // .run_if(in_state(ProgramState::InGame)) // redundant
+        )
         .add_systems(
             Update,
             (check_ball_death,).run_if(in_state(LevelState::Playing)),
@@ -237,17 +233,14 @@ fn main() {
         .add_systems(
             Update,
             (shake_base, check_actions)
+                .run_if(not(is_menu_paused))
+                .run_if(not(egui_wants_any_keyboard_input))
                 .run_if(in_state(LevelState::Playing))
-                .run_if(not(egui_wants_any_keyboard_input)),
+            ,
         )
         .add_systems(
             PostUpdate,
             (spawn_ball,).run_if(in_state(LevelState::Playing)),
-        )
-        .add_systems(
-            Update,
-            (process_global_actions, )
-                .run_if(in_state(LevelState::Playing))
         )
         .run();
 }
@@ -471,9 +464,17 @@ fn check_actions(
     time: Res<Time<Physics>>,
     shake: Option<Res<Shake>>,
     spawning: Res<Spawning>,
+    overlay: Res<State<OverlayState>>,
+
     mut commands: Commands,
     mut forces: Query<Forces>,
+
 ) {
+    if overlay.is_menu() {
+        // Ignore here
+        return
+    }
+
     if keys.just_released(KeyCode::Enter) {
         commands.insert_resource(Spawning(!spawning.0))
     }
@@ -569,83 +570,33 @@ fn check_ball_death(
     }
 }
 
-fn process_global_actions(
+pub(crate) fn spawn_level(
     mut commands: Commands,
-    action_state: Res<ActionState<UserAction>>,
-    program_state: Res<State<ProgramState>>,
-    overlay_state: Res<State<OverlayState>>,
-    mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
-    mut pause_state: ResMut<PauseState>,
-    mut vol_q: Single<&mut UserVolume, With<MainBus>>,
-) {
-    if action_state.just_pressed(&UserAction::ToggleMenu) {
-        match overlay_state.get() {
-            OverlayState::Hidden | OverlayState::Loading => {
-                if *program_state.get() == ProgramState::InGame {
-                    pause_state.set_menu_paused(true);
-                    commands.set_state(OverlayState::EscapeMenu);
-                }
-            }
-            OverlayState::MainMenu => {
-                // Nothing
-            }
-            OverlayState::EscapeMenu => {
-                pause_state.set_menu_paused(false);
-                commands.set_state(OverlayState::Hidden);
-            }
-            OverlayState::GameMenu => {
-                if *program_state.get() == ProgramState::InGame {
-                    commands.set_state(OverlayState::EscapeMenu);
-                } else {
-                    commands.set_state(OverlayState::MainMenu);
-                }
-            }
-            OverlayState::OptionsMenu => {
-                if *program_state.get() == ProgramState::InGame {
-                    commands.set_state(OverlayState::EscapeMenu);
-                } else {
-                    commands.set_state(OverlayState::MainMenu);
-                }
-            }
-            OverlayState::AudioMenu | OverlayState::VideoMenu | OverlayState::ControlsMenu => {
-                if *program_state.get() == ProgramState::InGame {
-                    commands.set_state(OverlayState::EscapeMenu);
-                } else {
-                    commands.set_state(OverlayState::OptionsMenu);
-                }
-            }
-            OverlayState::DebugGuiVisible => {
-                commands.set_state(OverlayState::Hidden);
-            }
-        }
-    }
-    if action_state.just_pressed(&UserAction::TogglePause) {
-        let paused = !pause_state.is_user_paused();
-        pause_state.set_user_paused(paused);
-    }
-    if action_state.just_pressed(&UserAction::ToggleDebugUi) {
-        commands.set_state(match overlay_state.get() {
-            OverlayState::Hidden => OverlayState::DebugGuiVisible,
-            OverlayState::DebugGuiVisible => OverlayState::Hidden,
-            current => *current,
-        });
-    }
-    if action_state.just_pressed(&UserAction::ToggleFullScreen)
-        && let Ok(mut window) = primary_window.single_mut()
-    {
-        let cur_mode = window.mode;
-        window.mode = match cur_mode {
-            WindowMode::Windowed => WindowMode::BorderlessFullscreen(MonitorSelection::Current),
-            WindowMode::BorderlessFullscreen(_monitor_selection) => WindowMode::Windowed,
+    map_assets: Res<MapAssets>,
+    world: Single<Entity, With<WorldMarker>>,
+ ) {
+    commands.insert_resource(WorldSetup {
+        waiting_skybox: true,
+        waiting_reflections: false,
+    });
 
-            // WindowMode::BorderlessFullscreen(monitor_selection) => WindowMode::Fullscreen(
-            //     monitor_selection, VideoModeSelection::Current),
-            WindowMode::Fullscreen(_monitor_selection, _video_mode_selection) => {
-                WindowMode::Windowed
-            }
-        };
-    }
-    if action_state.just_pressed(&UserAction::ToggleMute) {
-        vol_q.muted = !vol_q.muted;
-    }
+    let level = commands.spawn((
+        SceneRoot(map_assets.level_test.clone()),
+    ))
+        .observe(|_ready: On<SceneInstanceReady>,
+            player_q: Query<&Transform, With<PlayerStart>>,
+            camera_q: Query<Entity, With<Camera3d>>,
+            mut commands: Commands| {
+                if let Ok(xfrm) = player_q.single()
+                && let Ok(camera) = camera_q.single()  {
+                    commands.entity(camera).insert(xfrm.clone());
+                } else {
+                    log::error!("no PlayerStart");
+                }
+
+                commands.insert_resource(Spawning(true));
+                commands.insert_resource(Shake(Vec3::ZERO));
+        }).id();
+
+    commands.entity(*world).add_child(level);
 }

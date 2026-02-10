@@ -7,7 +7,7 @@ use bevy_seedling::prelude::PlaybackSettings;
 use bevy::prelude::*;
 use bevy_seedling::sample::SamplePlayer;
 
-use crate::markers::DespawnAfter;
+use super::markers::DespawnAfter;
 
 pub struct LifecyclePlugin;
 
