@@ -1,3 +1,4 @@
+pub(crate) mod base_dir;
 pub(crate) mod actions;
 pub(crate) mod audio;
 pub(crate) mod debug;
@@ -18,6 +19,7 @@ pub(crate) mod player_move_look;
 pub(crate) mod player_input;
 pub(crate) mod conditions;
 
+pub(crate) use base_dir::*;
 pub(crate) use actions::*;
 pub(crate) use audio::*;
 pub(crate) use debug::*;

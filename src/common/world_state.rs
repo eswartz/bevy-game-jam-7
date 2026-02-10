@@ -6,14 +6,9 @@ use bevy::prelude::*;
 use avian3d::prelude::*;
 
 use bevy::core_pipeline::Skybox;
-use bevy::scene::SceneInstanceReady;
 use bevy_asset_loader::asset_collection::AssetCollection;
-use bevy_asset_loader::loading_state::config::ConfigureLoadingState as _;
-use bevy_asset_loader::loading_state::LoadingState;
-use bevy_asset_loader::loading_state::LoadingStateAppExt as _;
 use image::imageops::FilterType;
 
-use crate::common::*;
 use super::lifecycle::PauseState;
 use super::states_sets::GameplayState;
 use super::states_sets::LevelState;
@@ -496,37 +491,6 @@ fn check_level_setup(
         pause.set_menu_paused(false);
     }
 }
-
-// pub(crate) fn spawn_level(
-//     mut commands: Commands,
-//     map_assets: Res<MapAssets>,
-//     world: Single<Entity, With<WorldMarker>>,
-//  ) {
-//     commands.insert_resource(WorldSetup {
-//         waiting_skybox: true,
-//         waiting_reflections: false,
-//     });
-
-//     let level = commands.spawn((
-//         SceneRoot(map_assets.level_test.clone()),
-//     ))
-//         .observe(|_ready: On<SceneInstanceReady>,
-//             player_q: Query<&Transform, With<PlayerStart>>,
-//             camera_q: Query<Entity, With<Camera3d>>,
-//             mut commands: Commands| {
-//                 if let Ok(xfrm) = player_q.single()
-//                 && let Ok(camera) = camera_q.single()  {
-//                     commands.entity(camera).insert(xfrm.clone());
-//                 } else {
-//                     log::error!("no PlayerStart");
-//                 }
-
-//                 commands.insert_resource(Spawning(true));
-//                 commands.insert_resource(Shake(Vec3::ZERO));
-//         }).id();
-
-//     commands.entity(*world).add_child(level);
-// }
 
 pub(crate) fn despawn_world(
     world: Single<Entity, With<WorldMarker>>,

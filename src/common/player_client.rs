@@ -49,7 +49,7 @@ fn sync_player(
     for (ent, player) in params.p1().iter() {
         if player.0 == user.0 {
             commands.entity(ent).insert(OurPlayer);
-            log::info!("Claiming entity {ent} for {}", user.0);
+            log::info!("Claiming entity {ent} for player {}", user.0);
             break;
         }
     }

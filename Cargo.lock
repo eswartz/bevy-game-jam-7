@@ -3,6 +3,33 @@
 version = 4
 
 [[package]]
+name = "Fever"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "avian3d",
+ "bevy",
+ "bevy-inspector-egui",
+ "bevy_asset_loader",
+ "bevy_egui",
+ "bevy_seedling",
+ "bevy_skein",
+ "bytemuck",
+ "egui",
+ "firewheel",
+ "image",
+ "leafwing-input-manager",
+ "log",
+ "rand 0.10.0",
+ "rustc-hash 2.1.1",
+ "serde",
+ "strum",
+ "strum_macros",
+ "tracing",
+ "wgpu",
+]
+
+[[package]]
 name = "ab_glyph"
 version = "0.2.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6116,33 +6143,6 @@ name = "simd-adler32"
 version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e320a6c5ad31d271ad523dcf3ad13e2767ad8b1cb8f047f75a8aeaf8da139da2"
-
-[[package]]
-name = "skein-test"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "avian3d",
- "bevy",
- "bevy-inspector-egui",
- "bevy_asset_loader",
- "bevy_egui",
- "bevy_seedling",
- "bevy_skein",
- "bytemuck",
- "egui",
- "firewheel",
- "image",
- "leafwing-input-manager",
- "log",
- "rand 0.10.0",
- "rustc-hash 2.1.1",
- "serde",
- "strum",
- "strum_macros",
- "tracing",
- "wgpu",
-]
 
 [[package]]
 name = "skrifa"

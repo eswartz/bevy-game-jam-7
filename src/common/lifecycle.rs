@@ -1,8 +1,5 @@
-use std::sync::atomic::Ordering;
-
 use avian3d::prelude::Physics;
 use avian3d::prelude::PhysicsTime as _;
-use bevy_seedling::prelude::*;
 use bevy_seedling::prelude::PlaybackSettings;
 use bevy::prelude::*;
 use bevy_seedling::sample::SamplePlayer;

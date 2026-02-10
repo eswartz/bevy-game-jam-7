@@ -9,7 +9,6 @@ use crate::common::*;
 
 /// Configures the default centering mode.
 pub const DEFAULT_CENTER_MOUSE: bool = !cfg!(target_os = "macos");
-pub const DEFAULT_SHOW_GRABBED_MOUSE_POINTER: bool = false;
 
 /// This plugin monitors user input and sends PlayerInput events.
 pub struct PlayerControllerPlugin;

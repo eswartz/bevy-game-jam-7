@@ -56,17 +56,6 @@ pub(crate) fn init_background_audio(
     ));
 }
 
-// pub(crate) fn init_spatial_listener(
-//     mut commands: Commands,
-// ) {
-//     // It's free-floating to start.
-//     commands.spawn((
-//         Name::new("Listener"),
-//         DespawnOnExit(GameplayState::Playing),
-//         SpatialListener3D::default(),
-//     ));
-// }
-
 fn spawn_menu_fx(mut commands: Commands,
     fx: Option<Res<FxAssets>>,
     mut reader: MessageReader<MenuActionMessage>,

@@ -10,6 +10,7 @@ use crate::menus::MenuPlugin;
 use crate::player_spawning::spawn_player;
 use bevy::asset::uuid::Uuid;
 use bevy::audio::PlaybackSettings;
+use bevy::ecs::world::CommandQueue;
 use bevy_seedling::prelude::*;
 use common::*;
 use rand::RngExt;
@@ -75,8 +76,17 @@ struct Shake(pub Vec3);
 #[derive(Debug, Resource)]
 pub struct ExitRequest;
 
-fn main() {
-    App::new()
+fn main() -> AppExit {
+    let res = find_runtime_base_directory_by_folder("assets");
+    let base_dir = match res {
+        Err(e) => {
+            log::error!("startup failure: {e}");
+            return AppExit::from_code(3);
+        }
+        Ok(base_dir) => base_dir,
+    };
+
+    let exit = App::new()
         .insert_resource(WinitSettings {
             focused_mode: bevy::winit::UpdateMode::reactive_low_power(Duration::from_secs_f32(
                 1.0 / 120.0,
@@ -93,6 +103,7 @@ fn main() {
                     // See https://github.com/bevyengine/bevy_github_ci_template/issues/48.
                     meta_check: AssetMetaCheck::Never,
                     watch_for_changes_override: Some(true),
+                    file_path: base_dir.join("assets").display().to_string(),
                     ..default()
                 })
                 .set(ImagePlugin {
@@ -170,6 +181,8 @@ fn main() {
 
         .insert_resource(OurUser(default()))
 
+        .insert_resource(PlayerInputSettings::for_space())
+
         // .add_loading_state(
         //         LoadingState::new(ProgramState::Initializing)
         //             .load_collection::<MusicAssets>()
@@ -226,11 +239,12 @@ fn main() {
         )
 
         .add_systems(OnEnter(GameplayState::Setup),
-            (
-                spawn_player_on_start,
-                spawn_level,
-            )
-            .chain()
+            spawn_level
+            // .in_set(SimulationSystems)
+            // .run_if(in_state(ProgramState::InGame)) // redundant
+        )
+        .add_systems(OnEnter(GameplayState::Playing),
+            spawn_player_on_start,
             // .in_set(SimulationSystems)
             // .run_if(in_state(ProgramState::InGame)) // redundant
         )
@@ -254,45 +268,39 @@ fn main() {
             (spawn_ball,).run_if(in_state(LevelState::Playing)),
         )
         .run();
-}
 
-fn init_3d_camera(mut commands: Commands, use_clustered: bool) {
-    info!("Initializing 3D camera");
-
-    // Force init.
-    commands.insert_resource(VideoCameraSettingsChanged);
-    commands.insert_resource(VideoEffectSettingsChanged);
-
-    let ent_commands = commands.spawn((
-        Name::new("FirstPersonCamera"),
-        DespawnOnExit(GameplayState::Playing),
-        PlayerCamera(CameraMode::FirstPerson),
-        OurCamera::default(),
-        Transform::from_xyz(0., 1., 0.),
-        SpatialListener3D::default(),
-    ));
-    setup_3d_camera(ent_commands, use_clustered);
+    exit
 }
 
 fn ensure_3d_camera(
     mut commands: Commands,
-    camera_q: Query<Entity /* , With<OurCamera> */>,
+    camera_q: Query<Entity, With<OurCamera>>,
     render_device: Res<RenderDevice>,
     render_adapter: Res<RenderAdapter>,
 ) {
     let use_clustered =
         bevy::pbr::decal::clustered::clustered_decals_are_usable(&render_device, &render_adapter);
 
-    if let Ok(ent) = camera_q.single() {
-        setup_3d_camera(commands.get_entity(ent).unwrap(), use_clustered);
+    let ent = if let Ok(ent) = camera_q.single() {
+        // Got one.
+        ent
     } else {
-        init_3d_camera(commands.reborrow(), use_clustered);
-    }
+        info!("Creating 3D camera");
+
+        commands.spawn_empty().id()
+    };
+
+    // Force init.
+    commands.insert_resource(VideoCameraSettingsChanged);
+    commands.insert_resource(VideoEffectSettingsChanged);
+
+    configure_3d_camera(commands.get_entity(ent).unwrap(), use_clustered);
 }
 
-fn setup_3d_camera(mut ent_commands: EntityCommands, use_clustered: bool) {
+fn configure_3d_camera(mut ent_commands: EntityCommands, use_clustered: bool) {
     info!("Setting up camera");
     ent_commands.insert((
+        Name::new("Camera"),
         Camera3d::default(),
         Exposure { ev100: 10.0 },
         Camera {
@@ -307,19 +315,14 @@ fn setup_3d_camera(mut ent_commands: EntityCommands, use_clustered: bool) {
         }),
         // OrderIndependentTransparencySettings::default(),
         // Msaa::Off,
-        Name::new("Camera"),
 
-        RigidBody::Dynamic,
-        Collider::sphere(0.25),
-        Restitution::new(0.25),
-        LockedAxes::default()
-            .lock_translation_y()
-            .lock_rotation_x()
-            // .lock_rotation_y()
-            .lock_rotation_z()
-        ,
-        AngularDamping(0.99),
-        // PhysicsLayer(GameLayer::World),
+        DespawnOnExit(GameplayState::Playing),
+        PlayerCamera(CameraMode::FirstPerson),
+        OurCamera::default(),
+        Transform::from_xyz(0., 1., 0.),
+
+        // Audio is from the perspective of the camera.
+        SpatialListener3D::default(),
     ));
 
     if !use_clustered {
@@ -419,7 +422,14 @@ fn observe_spawn_mesh(
 
             commands
                 .entity(entity)
-                .insert((NoFrustumCulling, MaxLinearSpeed(256.0)));
+                .insert((
+                    NoFrustumCulling,
+                    MaxLinearSpeed(256.0),
+                    CollisionLayers::new(
+                        GameLayer::World,
+                        [GameLayer::Default, GameLayer::World, GameLayer::Player, GameLayer::Projectiles]
+                    ),
+                ));
 
             if owner_name_is("Base") || owner_name_is("Tube") {
                 // dbg!(entity);
@@ -439,7 +449,20 @@ fn observe_spawn_mesh(
 }
 
 pub(crate) fn spawn_player_on_start(world: &mut World) {
-    spawn_player(world, Uuid::default());
+    let ent = spawn_player(world, Uuid::default());
+
+    let mut start_q = world.query_filtered::<&Transform, (With<PlayerStart>,Without<OurPlayer>)>();
+    let Ok(xfrm) = start_q.single(world) else { log::error!("no PlayerStart or OurPlayer"); return; };
+    drop(start_q);
+    let xfrm = xfrm.clone();
+
+    let mut queue = CommandQueue::default();
+    let mut commands = Commands::new(&mut queue, world);
+
+    // Put the new Player where the PlayerStart is.
+    commands.entity(ent).insert(xfrm);
+
+    queue.apply(world);
 }
 
 pub(crate) fn spawn_level(
@@ -456,16 +479,7 @@ pub(crate) fn spawn_level(
         SceneRoot(map_assets.level_test.clone()),
     ))
         .observe(|_ready: On<SceneInstanceReady>,
-            player_q: Query<&Transform, With<PlayerStart>>,
-            camera_q: Query<Entity, With<Camera3d>>,
             mut commands: Commands| {
-                if let Ok(xfrm) = player_q.single()
-                && let Ok(camera) = camera_q.single()  {
-                    commands.entity(camera).insert(xfrm.clone());
-                } else {
-                    log::error!("no PlayerStart");
-                }
-
                 commands.insert_resource(Spawning(true));
                 commands.insert_resource(Shake(Vec3::ZERO));
         }).id();
@@ -487,8 +501,8 @@ fn spawn_ball(
     }
 
     if timer.duration().is_zero() {
-        // *timer = Timer::from_seconds(0.125, TimerMode::Repeating);
-        *timer = Timer::from_seconds(1.0, TimerMode::Repeating);
+        *timer = Timer::from_seconds(0.0125, TimerMode::Repeating);
+        // *timer = Timer::from_seconds(1.0, TimerMode::Repeating);
     }
     if !timer.tick(time.delta()).just_finished() {
         return;
@@ -512,7 +526,7 @@ fn spawn_ball(
             // Make into spatial sound.
             Transform::from_translation(xfrm.translation),
 
-            // // To avoid https://github.com/CorvusPrudens/bevy_seedling/issues/87
+            // To avoid https://github.com/CorvusPrudens/bevy_seedling/issues/87
             sample_effects![SpatialBasicNode {
                 offset: Vec3::new(1000.0, 1000.0, 1000.0).into(),
                 ..default()

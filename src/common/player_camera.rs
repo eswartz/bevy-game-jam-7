@@ -1,3 +1,5 @@
+// Client-side camera behavior.
+
 use avian3d::prelude::*;
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
@@ -13,16 +15,6 @@ impl Plugin for PlayerCameraPlugin {
             .register_type::<OurCamera>()
             .register_type::<PlayerCameraSettings>()
             .init_resource::<PlayerCameraSettings>()
-            // .add_systems(OnEnter(ProgramState::InGame),
-            //     (
-            //         ensure_3d_camera,
-            //         show_3d_camera,
-            //     )
-            //     .chain()
-            // )
-            // .add_systems(OnEnter(ProgramState::LaunchMenu),
-            //     hide_3d_camera,
-            // )
             .add_systems(FixedPreUpdate,
                 (
                     handle_player_camera_actions,
@@ -263,20 +255,17 @@ pub(crate) fn hide_3d_camera(mut camera_q: Query<&mut Camera, (With<Camera3d>, W
 
 pub(crate) fn update_player_ui(
     mut player_q: Query<(&PlayerMovement, &PlayerLook, &Transform, &ColliderAabb), With<OurPlayer>>,
-    camera_q: Query<&PlayerCamera, With<OurCamera>>,
     mut gizmos: Gizmos,
 ) {
     for (movement, look, transform, aabb) in player_q.iter_mut() {
-        if let Ok(camera) = camera_q.single() && camera.0 != CameraMode::FirstPerson {
-            // Show where we're looking.
-            let head = player_eyes(transform, aabb, look);
-            let normal = look.rotation * Vec3::NEG_Z;
-            gizmos.arrow(
-                head,
-                head + normal * 5.0,
-                Color::WHITE,
-            );
-        }
+        // Show where we're looking.
+        let head = player_eyes(transform, aabb, look);
+        let normal = look.rotation * Vec3::NEG_Z;
+        gizmos.arrow(
+            head,
+            head + normal * 5.0,
+            Color::WHITE,
+        );
 
         if movement.state == MovementState::Grounded {
             let feet = player_feet(transform, aabb);

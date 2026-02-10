@@ -11,7 +11,7 @@ use crate::common::*;
 /// Spawn player entities into the world, but leave them inert until the map is loaded.
 pub(crate) fn spawn_player(world: &mut World, user_id: Uuid) -> Entity {
 
-    info!("spawn player {user_id}");
+    info!("Spawning player {user_id}");
     let mut exist_ent = None;
     {
         let mut player_q = world.query::<(Entity, &Player)>();
@@ -84,9 +84,11 @@ pub(crate) fn spawn_player(world: &mut World, user_id: Uuid) -> Entity {
             // MeshMaterial3d(mat),
 
             Transform::IDENTITY,
+            Visibility::Inherited,  // needed if no Mesh*
         ),
         (
-            RigidBody::Kinematic,
+            // RigidBody::Kinematic,
+            RigidBody::Dynamic,
 
             (
                 Mass(5.),
@@ -110,6 +112,8 @@ pub(crate) fn spawn_player(world: &mut World, user_id: Uuid) -> Entity {
 
             // Avoid flying too much when e.g. colliding with a projectile.
             MaxLinearSpeed(4096.0),
+
+            GravityScale(0.0),
         ),
 
         // // This child component is used to:
