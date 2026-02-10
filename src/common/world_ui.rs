@@ -91,21 +91,22 @@ pub fn apply_effect_settings(
     ent_commands.remove::<Bloom>();
 
     ent_commands.insert((
-        Tonemapping::BlenderFilmic,
+        // Tonemapping::BlenderFilmic,
+        Tonemapping::TonyMcMapface,
         // Kinda ugly and contrasty
-        // Bloom {
-        //     intensity: -1.0,
-        //     low_frequency_boost: 1.0,
-        //     low_frequency_boost_curvature: 0.0,
-        //     high_pass_frequency: 1.0,
-        //     ..default()
-        // },
-        Bloom::NATURAL,
+        Bloom {
+            intensity: -1.0,
+            low_frequency_boost: 1.0,
+            low_frequency_boost_curvature: 0.0,
+            high_pass_frequency: 1.0,
+            ..default()
+        },
+        // Bloom::NATURAL,
         ColorGrading {
             global: ColorGradingGlobal {
                 // exposure: 1.25,
                 exposure: 1.0,
-                post_saturation: 1.25,
+                post_saturation: 1.5,
                 ..default()
             },
             shadows: ColorGradingSection {

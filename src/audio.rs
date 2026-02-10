@@ -24,7 +24,10 @@ impl Plugin for AudioPlugin {
             )
 
             .add_systems(OnEnter(LevelState::Playing),
-                init_background_audio
+                (
+                    init_background_audio,
+                    init_spatial_listener,
+                )
             )
             .add_systems(Update,
                 (
@@ -51,6 +54,17 @@ pub(crate) fn init_background_audio(
             // on_complete: OnComplete::Despawn,
             ..default()
         },
+    ));
+}
+
+pub(crate) fn init_spatial_listener(
+    mut commands: Commands,
+) {
+    // It's free-floating to start.
+    commands.spawn((
+        Name::new("Listener"),
+        DespawnOnExit(GameplayState::Playing),
+        SpatialListener::default(),
     ));
 }
 

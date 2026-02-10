@@ -235,7 +235,10 @@ fn main() {
         )
         .add_systems(
             Update,
-            (check_ball_death,).run_if(in_state(LevelState::Playing)),
+            (check_ball_death,
+            move_camera_around,
+            aim_camera_around,
+            ).run_if(in_state(LevelState::Playing)),
         )
         .add_systems(
             Update,
@@ -302,8 +305,21 @@ fn setup_3d_camera(mut ent_commands: EntityCommands, use_clustered: bool) {
         }),
         OrderIndependentTransparencySettings::default(),
         Msaa::Off,
-        SpatialListener::default(),
+        Name::new("Camera"),
+
+        RigidBody::Dynamic,
+        Collider::sphere(0.25),
+        Restitution::new(0.25),
+        LockedAxes::default()
+            .lock_translation_y()
+            .lock_rotation_x()
+            // .lock_rotation_y()
+            .lock_rotation_z()
+        ,
+        AngularDamping(0.99),
+        // PhysicsLayer(GameLayer::World),
     ));
+    ;
     if !use_clustered {
         ent_commands.insert(DepthPrepass);
     }
@@ -635,4 +651,76 @@ fn check_ball_death(
             }
         }
     }
+}
+
+fn move_camera_around(
+    time: Res<Time<Physics>>,
+    camera_q: Single<(Entity, &Transform), (With<Camera3d>, Without<SpatialListener>, /* With<OurCamera>, */)>,
+    // aabb_q: Query<&Aabb>,
+    mut listener_xfrm_q: Single<&mut Transform, (With<SpatialListener>, Without<Camera3d>)>,
+    // mut ray_cast: MeshRayCast,
+    // listener: Single<Entity, With<SpatialListener>>,
+    mut forces_q: Query<Forces>,
+) {
+    if time.is_paused() {
+        return
+    }
+
+    // // Move
+    // let ray = Ray3d::new(Vec3::ZERO, Dir3::X);
+
+    // let filter = |entity| true;
+
+    // let early_exit_test = |_entity| true;
+
+    // let visibility = RayCastVisibility::VisibleInView;
+
+    // let settings = MeshRayCastSettings::default()
+    //     .with_filter(&filter)
+    //     .with_early_exit_test(&early_exit_test)
+    //     .with_visibility(visibility);
+
+    // let hits = ray_cast.cast_ray(ray, &settings);
+
+    // // if !hits.is_empty() && hits[0].1.distance < CAMERA_SIZE {
+    // //     commands.entity(*listener).insert(Transform::from_translation(hits[0].1.point));
+    // // }
+
+    // Move some.
+    let mut rng = rand::rng();
+    let diff = Vec3::new(
+        rng.random_range(-1.0 ..= 1.0),
+        rng.random_range(-1.5 ..= 1.0),
+        rng.random_range(-2.0 ..= 1.0),
+    );
+    let orig_pos = camera_q.1.translation;
+    let diff_rot = camera_q.1.rotation * diff;
+
+    let new_pos = orig_pos + diff_rot * 10.0 * time.delta_secs();
+
+    // camera_q.translation += diff_rot * 10.0 * time.delta_secs();
+    if let Ok(mut forces) = forces_q.get_mut(camera_q.0) {
+        forces.apply_linear_impulse((new_pos - orig_pos) * time.delta_secs());
+    }
+
+    // let diff = Vec3::new(
+    //     rng.random_range(-1.0 ..= 1.0),
+    //     rng.random_range(-1.0 ..= 1.0),
+    //     rng.random_range(-1.0 ..= 1.0),
+    // );
+    // listener_xfrm_q.translation = camera_q.translation + diff;
+
+    listener_xfrm_q.translation = new_pos.lerp(listener_xfrm_q.translation, 0.5);
+}
+
+fn aim_camera_around(
+    time: Res<Time<Physics>>,
+    mut camera_q: Single<(Entity, &mut Transform), (With<Camera3d>, Without<SpatialListener>, /* With<OurCamera>, */)>,
+) {
+    if time.is_paused() {
+        return
+    }
+
+    let target = camera_q.1.looking_at(Vec3::ZERO, Vec3::Y);
+    camera_q.1.rotation = camera_q.1.rotation.lerp(target.rotation, 0.5);
 }
