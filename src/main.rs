@@ -2,13 +2,15 @@ mod common;
 mod menus;
 mod assets;
 mod audio;
+mod player_spawning;
 
-use crate::assets::FxAssets;
-use crate::assets::MapAssets;
+use crate::assets::*;
 use crate::audio::AudioPlugin;
 use crate::menus::MenuPlugin;
-use bevy_seedling::sample::PlaybackSettings;
-use bevy_seedling::sample::SamplePlayer;
+use crate::player_spawning::spawn_player;
+use bevy::asset::uuid::Uuid;
+use bevy::audio::PlaybackSettings;
+use bevy_seedling::prelude::*;
 use common::*;
 use rand::RngExt;
 
@@ -160,6 +162,14 @@ fn main() {
         .add_plugins(DebugPlugin)
         .add_plugins(AudioPlugin)
 
+        .add_plugins(PlayerCameraPlugin)
+        .add_plugins(PlayerInputPlugin)
+        .add_plugins(PlayerClientPlugin)
+        .add_plugins(PlayerMovementPlugin)
+        .add_plugins(PlayerControllerPlugin)
+
+        .insert_resource(OurUser(default()))
+
         // .add_loading_state(
         //         LoadingState::new(ProgramState::Initializing)
         //             .load_collection::<MusicAssets>()
@@ -217,6 +227,7 @@ fn main() {
 
         .add_systems(OnEnter(GameplayState::Setup),
             (
+                spawn_player_on_start,
                 spawn_level,
             )
             .chain()
@@ -226,8 +237,8 @@ fn main() {
         .add_systems(
             Update,
             (check_ball_death,
-            move_camera_around,
-            aim_camera_around,
+            // move_camera_around,
+            // aim_camera_around,
             ).run_if(in_state(LevelState::Playing)),
         )
         .add_systems(
@@ -239,7 +250,7 @@ fn main() {
             ,
         )
         .add_systems(
-            PostUpdate,
+            Update,
             (spawn_ball,).run_if(in_state(LevelState::Playing)),
         )
         .run();
@@ -255,9 +266,10 @@ fn init_3d_camera(mut commands: Commands, use_clustered: bool) {
     let ent_commands = commands.spawn((
         Name::new("FirstPersonCamera"),
         DespawnOnExit(GameplayState::Playing),
-        // PlayerCamera(CameraMode::FirstPerson),
-        // OurCamera::default(),
+        PlayerCamera(CameraMode::FirstPerson),
+        OurCamera::default(),
         Transform::from_xyz(0., 1., 0.),
+        SpatialListener3D::default(),
     ));
     setup_3d_camera(ent_commands, use_clustered);
 }
@@ -312,18 +324,6 @@ fn setup_3d_camera(mut ent_commands: EntityCommands, use_clustered: bool) {
 
     if !use_clustered {
         ent_commands.insert(DepthPrepass);
-    }
-}
-
-fn show_3d_camera(mut camera_q: Query<&mut Camera, (With<Camera3d> /* With<OurCamera> */,)>) {
-    if let Ok(mut camera) = camera_q.single_mut() {
-        camera.is_active = true;
-    }
-}
-
-fn hide_3d_camera(mut camera_q: Query<&mut Camera, (With<Camera3d> /* With<OurCamera> */,)>) {
-    if let Ok(mut camera) = camera_q.single_mut() {
-        camera.is_active = false;
     }
 }
 
@@ -438,6 +438,10 @@ fn observe_spawn_mesh(
     }
 }
 
+pub(crate) fn spawn_player_on_start(world: &mut World) {
+    spawn_player(world, Uuid::default());
+}
+
 pub(crate) fn spawn_level(
     mut commands: Commands,
     map_assets: Res<MapAssets>,
@@ -483,7 +487,8 @@ fn spawn_ball(
     }
 
     if timer.duration().is_zero() {
-        *timer = Timer::from_seconds(0.125, TimerMode::Repeating);
+        // *timer = Timer::from_seconds(0.125, TimerMode::Repeating);
+        *timer = Timer::from_seconds(1.0, TimerMode::Repeating);
     }
     if !timer.tick(time.delta()).just_finished() {
         return;
@@ -506,18 +511,20 @@ fn spawn_ball(
 
             // Make into spatial sound.
             Transform::from_translation(xfrm.translation),
-            // sample_effects![SpatialBasicNode {
-            //     // volume: Volume::Linear(rng.random_range(0.1f32 .. 1.0f32)),
 
-            //     ..default()
-            // }],
+            // // To avoid https://github.com/CorvusPrudens/bevy_seedling/issues/87
+            sample_effects![SpatialBasicNode {
+                offset: Vec3::new(1000.0, 1000.0, 1000.0).into(),
+                ..default()
+            }],
 
             SamplePlayer::new(fx.belch.clone()),
+            // SamplePlayer::new(fx.tone.clone()),
             PlaybackSettings {
                 speed: rng.random_range(0.75 .. 1.25),
                 ..default()
             },
-            // VolumeNode::from_linear(1.0),
+            VolumeNode::from_linear(rng.random_range(0.1 .. 1.0)),
         ));
     }
 }

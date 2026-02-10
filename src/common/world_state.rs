@@ -123,7 +123,31 @@ impl Plugin for WorldStatePlugin {
     }
 }
 
-/// This resource exists while [LevelState::Setup] is active.
+// #[derive(FgdType, Default, Reflect, Debug, Clone, Copy, PartialEq, Eq, Hash, Display, FromRepr, EnumIter, EnumString, IntoStaticStr, VariantArray)]
+#[derive(Component, Default, Reflect, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[reflect(Default)]
+#[type_path = "game"]
+// #[number_key]
+pub enum AreaContent {
+    /// Air.
+    #[default]
+    Air = 0,
+    /// Water.
+    Water = 1,
+}
+
+impl AreaContent {
+    pub fn in_liquid(&self) -> bool {
+        match self {
+            AreaContent::Air => false,
+            AreaContent::Water => true,
+        }
+    }
+}
+
+
+/// Add this resource when creating a new level.
+/// Removed when [LevelState::Setup] finishes.
 #[derive(Resource, Debug, Default, Reflect, PartialEq)]
 #[reflect(Resource, Default)]
 #[type_path = "game"]

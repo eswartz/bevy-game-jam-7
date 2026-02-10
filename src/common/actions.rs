@@ -109,6 +109,8 @@ pub enum UserAction {
     ToggleCrouch,
     /// When held, lower camera and move slower (i.e. Ctrl).
     Crouch,
+
+    ChangeCamera,
 }
 
 pub fn default_input_map() -> InputMap<UserAction> {

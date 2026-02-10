@@ -76,7 +76,7 @@ pub(crate) fn initialize_audio(master: Single<Entity, With<MainBus>>, mut comman
                 panning_threshold: 0.9,
                 ..default()
             },
-            SpatialScale(Vec3::splat(5.0))
+            SpatialScale(Vec3::splat(50.0))
         )],
         UserVolume {
             volume: DEFAULT_POOL_VOLUME,
