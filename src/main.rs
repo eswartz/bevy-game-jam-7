@@ -4,6 +4,7 @@ mod assets;
 mod audio;
 mod player_spawning;
 mod game;
+mod actions;
 
 use crate::assets::*;
 use crate::audio::AudioPlugin;
@@ -127,6 +128,8 @@ fn main() -> AppExit {
         )
 
         .add_plugins(ActionPlugin)
+        .insert_resource(actions::default_input_map())
+
         .add_plugins(MenuPlugin)
         .add_plugins(LifecyclePlugin)
         // .add_plugins(LevelStatePlugin)

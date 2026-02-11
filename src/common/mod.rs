@@ -1,5 +1,5 @@
 pub(crate) mod base_dir;
-pub(crate) mod actions;
+pub(crate) mod actions_common;
 pub(crate) mod audio;
 pub(crate) mod debug;
 pub(crate) mod gui;
@@ -21,7 +21,7 @@ pub(crate) mod conditions;
 pub(crate) mod crosshair;
 
 pub(crate) use base_dir::*;
-pub(crate) use actions::*;
+pub(crate) use actions_common::*;
 pub(crate) use audio::*;
 pub(crate) use debug::*;
 pub(crate) use gui::*;

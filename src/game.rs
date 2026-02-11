@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::assets::*;
 use crate::player_spawning::spawn_player;
 use crate::common::*;
@@ -6,6 +8,7 @@ use bevy::asset::uuid::Uuid;
 use bevy::audio::PlaybackSettings;
 use bevy::ecs::world::CommandQueue;
 use bevy_seedling::prelude::*;
+use leafwing_input_manager::prelude::ActionState;
 use rand::RngExt;
 use rand::seq::IndexedRandom;
 
@@ -70,20 +73,28 @@ struct Generator;
 #[type_path = "game"]
 struct Clone;
 
+/// Marker for things we spawned.
 #[derive(Component, Reflect, Default)]
 #[reflect(Component, Default)]
 #[type_path = "game"]
 struct Spawned;
 
+/// Our "base" object.
 #[derive(Resource, Reflect)]
 #[reflect(Resource)]
 #[type_path = "game"]
 struct Base(pub Entity, pub Transform);
 
+/// Is spawning active?
 #[derive(Resource, Reflect, Default)]
 #[reflect(Resource, Default)]
 #[type_path = "game"]
 struct Spawning(pub bool);
+
+/// Delay between spawns.
+#[derive(Resource)]
+pub(crate) struct SpawnDelay(pub(crate) Duration);
+
 
 #[derive(Resource, Reflect, Default)]
 #[reflect(Resource, Default)]
@@ -185,6 +196,7 @@ pub(crate) fn spawn_level(
         .spawn((SceneRoot(map_assets.level_test.clone()),))
         .observe(|_ready: On<SceneInstanceReady>, mut commands: Commands| {
             commands.insert_resource(Spawning(true));
+            commands.insert_resource(SpawnDelay(Duration::from_secs(1)));
             commands.insert_resource(Shake(Vec3::ZERO));
         })
         .id();
@@ -196,6 +208,7 @@ fn spawn_ball(
     mut commands: Commands,
     generator_q: Query<(Entity, &Transform), With<Generator>>,
     listener_q: Query<&Transform, With<SpatialListener3D>>,
+    delay: Res<SpawnDelay>,
     time: Res<Time<Physics>>,
     assets: Res<AssetServer>,
     spawning: Res<Spawning>,
@@ -207,8 +220,7 @@ fn spawn_ball(
     }
 
     if timer.duration().is_zero() {
-        *timer = Timer::from_seconds(0.0125, TimerMode::Repeating);
-        // *timer = Timer::from_seconds(1.0, TimerMode::Repeating);
+        *timer = Timer::from_seconds(delay.0.as_secs_f32(), TimerMode::Repeating);
     }
     if !timer.tick(time.delta()).just_finished() {
         return;
@@ -263,7 +275,8 @@ fn spawn_ball(
 }
 
 fn check_actions(
-    keys: Res<ButtonInput<KeyCode>>,
+    // keys: Res<ButtonInput<KeyCode>>,
+    actions: Res<ActionState<UserAction>>,
 
     base: Res<Base>,
     time: Res<Time<Physics>>,
@@ -279,10 +292,10 @@ fn check_actions(
         return;
     }
 
-    if keys.just_released(KeyCode::Enter) {
+    if actions.just_released(&UserAction::Interact) {
         commands.insert_resource(Spawning(!spawning.0))
     }
-    if keys.just_released(KeyCode::Space) {
+    if actions.just_released(&UserAction::AlternateFire) {
         if let Ok(mut force) = forces.get_mut(base.0) {
             // dbg!(base.0);
             let mut x = 1000.0 * (time.elapsed_secs() % 5.0);
@@ -293,31 +306,15 @@ fn check_actions(
         }
     }
 
-    let mut force = if let Some(shake) = shake {
-        shake.0
-    } else {
-        Vec3::ZERO
-    };
-    force.x = if keys.pressed(KeyCode::ArrowLeft) {
-        -1.0
-    } else {
-        0.0
-    } + if keys.pressed(KeyCode::ArrowRight) {
-        1.0
-    } else {
-        0.0
-    };
-    force.z = if keys.pressed(KeyCode::ArrowUp) {
-        -1.0
-    } else {
-        0.0
-    } + if keys.pressed(KeyCode::ArrowDown) {
-        1.0
-    } else {
-        0.0
-    };
-    if force.length() > 0.0 {
-        commands.insert_resource(Shake(force * time.delta_secs()));
+    let mut new_shake = Vec3::ZERO;
+    if let Some(move_lr) = actions.axis_data(&UserAction::MoveLeftRight2d) {
+        new_shake.x = move_lr.value;
+    }
+    if let Some(move_ud) = actions.axis_data(&UserAction::MoveDownUp2d) {
+        new_shake.y = move_ud.value;
+    }
+    if new_shake.length() > 0.0 {
+        commands.insert_resource(Shake(new_shake * time.delta_secs()));
     }
 }
 
