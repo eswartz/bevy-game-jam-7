@@ -63,18 +63,6 @@ impl Plugin for GuiPlugin {
             on_loading)
         .add_systems(OnExit(OverlayState::Loading),
             on_loading_finished)
-        // .add_systems(
-        //     OnEnter(ProgramState::InGame),
-        //     init_crosshair
-        //         // .in_set(InteractionSystems)
-        // )
-        // .add_systems(
-        //     OnExit(ProgramState::InGame),
-        //     (
-        //         term_crosshair
-        //     )
-        //     // .in_set(InteractionSystems)
-        // )
         .add_systems(
             Update,
             check_gui_state.run_if(resource_changed::<GuiState>.or(resource_changed::<State<OverlayState>>)),
@@ -82,13 +70,6 @@ impl Plugin for GuiPlugin {
         .add_systems(
             Update,
             (
-                // check_crosshair_activity,
-                // update_crosshair,
-                // (
-                //     check_crosshair_target,
-                //     // stop_crosshair_target_tween.run_if(resource_exists::<CrosshairDetarget>),
-                //     // start_crosshair_target_tween.run_if(resource_exists_and_changed::<CrosshairTarget>),
-                // ).chain(),
                 // update_debug_status,
                 check_grab_focus_state,
                 update_pause_ui,
@@ -113,8 +94,8 @@ pub struct GuiAssets {
     pub std_ui: Handle<Font>,
     #[asset(path = "fonts/emoji-icon-font.ttf")]
     pub emoji: Handle<Font>,
-    // #[asset(path = "textures/crosshair.png")]
-    // pub crosshair: Handle<Image>,
+    #[asset(path = "textures/crosshair.png")]
+    pub crosshair: Handle<Image>,
 }
 
 impl GuiAssets {

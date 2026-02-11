@@ -18,6 +18,7 @@ pub(crate) mod player_controller;
 pub(crate) mod player_move_look;
 pub(crate) mod player_input;
 pub(crate) mod conditions;
+pub(crate) mod crosshair;
 
 pub(crate) use base_dir::*;
 pub(crate) use actions::*;
@@ -39,3 +40,4 @@ pub(crate) use player_controller::*;
 pub(crate) use player_move_look::*;
 pub(crate) use player_input::*;
 pub(crate) use conditions::*;
+pub(crate) use crosshair::*;

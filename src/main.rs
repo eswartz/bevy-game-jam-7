@@ -135,6 +135,7 @@ fn main() -> AppExit {
         .add_plugins(WorldStatePlugin)
         .add_plugins(DebugPlugin)
         .add_plugins(AudioPlugin)
+        .add_plugins(CrosshairPlugin)
 
         .add_plugins(PlayerCameraPlugin)
         .add_plugins(PlayerInputPlugin)
