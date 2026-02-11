@@ -23,7 +23,7 @@ impl Plugin for PlayerCameraPlugin {
                 .chain()
                 .after(PhysicsSystems::Writeback)
                 .before(TransformSystems::Propagate)
-                .run_if(not(is_paused))
+                .run_if(not(is_user_paused))
                 .run_if(is_game_active)
                 ,
             )
@@ -33,7 +33,7 @@ impl Plugin for PlayerCameraPlugin {
                     let (phys_gizmos, _) = gizmo_config.config::<PhysicsGizmos>();
                     phys_gizmos.enabled
                 })
-                .run_if(not(is_paused))
+                .run_if(not(is_menu_paused))
                 .run_if(in_state(OverlayState::Hidden).or(in_state(OverlayState::DebugGuiVisible)))
             )
 

@@ -459,6 +459,7 @@ fn clear_player_velocity(player_q: Single<&mut LinearVelocity, With<PlayerMoveme
     vel.0 = Vector::ZERO;
 }
 
+/// Get the local position of the player's feet relative to the given player transform.
 pub fn player_feet(transform: &Transform, aabb: &ColliderAabb) -> Vec3 {
     Vec3::new(
         transform.translation.x,
@@ -466,6 +467,8 @@ pub fn player_feet(transform: &Transform, aabb: &ColliderAabb) -> Vec3 {
         transform.translation.z,
     )
 }
+
+/// Get the local position of the player's eyes relative to the given player transform.
 pub fn player_eyes(transform: &Transform, aabb: &ColliderAabb, look: &PlayerLook) -> Vec3 {
     // let center = aabb.center().as_vec3();
     // Eyes are in the middle of the head.
@@ -482,10 +485,7 @@ pub fn player_eyes(transform: &Transform, aabb: &ColliderAabb, look: &PlayerLook
     )
 }
 
-// pub fn player_gun(transform: &Transform, look: &PlayerLook) -> Vec3 {
-//     (transform.translation + Vec3::new(0., 0.5 + look.crouch_y, 0.))
-//         + transform.rotation * Vec3::NEG_Z * 0.25
-// }
+/// Get the local position of the player's gun relative to the given player transform.
 pub fn player_gun(transform: &Transform, eyes: Vec3) -> Vec3 {
     (eyes + Vec3::new(0., -0.25, 0.)) + transform.rotation * Vec3::NEG_Z * 0.25
 }
@@ -658,9 +658,8 @@ pub(crate) fn process_player_input_movement_for_cheats(
         (
             Forces,
             &mut PlayerMovement,
-            &mut PlayerLook,
-            &mut Transform,
-            &ColliderAabb,
+            &PlayerLook,
+            &Transform,
         ),
         With<Player>,
     >,
@@ -668,11 +667,10 @@ pub(crate) fn process_player_input_movement_for_cheats(
     time: Res<Time>,
     settings: Res<PlayerInputSettings>,
 ) {
-    let dt = time.delta_secs();
     for input in inputs.read() {
         let res = player_q.get_mut(input.player_entity());
 
-        let Ok((mut forces, mut movement, mut look, mut transform, aabb)) = res
+        let Ok((mut forces, mut movement, look, transform)) = res
         else {
             let e = unsafe { res.unwrap_err_unchecked() };
             warn!("invalid player entity {}: {:?}", input.player_entity(), e);
@@ -745,7 +743,6 @@ pub(crate) fn process_player_input_movement_for_fps(
             &mut PlayerMovement,
             &mut PlayerLook,
             &mut Transform,
-            &ColliderAabb,
         ),
         With<Player>,
     >,
@@ -758,11 +755,10 @@ pub(crate) fn process_player_input_movement_for_fps(
     }
 
     let dt = time.delta_secs();
-    // let fly_decay = (-0.5f32 * settings.fly_decay_time_secs).exp() as Scalar;
     for input in inputs.read() {
         let res = player_q.get_mut(input.player_entity());
 
-        let Ok((mut forces, /* cheats, */ mut movement, mut look, mut transform, aabb)) = res
+        let Ok((mut forces, /* cheats, */ mut movement, mut look, mut transform)) = res
         else {
             let e = unsafe { res.unwrap_err_unchecked() };
             warn!("invalid player entity {}: {:?}", input.player_entity(), e);
@@ -772,7 +768,6 @@ pub(crate) fn process_player_input_movement_for_fps(
         let mut vel = forces.linear_velocity();
         let mut jump_impulse = Vector::ZERO;
 
-        // dbg!(movement.prev_state, movement.state);
         let mut instant_thrust = Vec3::ZERO;
         let mut overall_speed = settings.base_xz_speed as f32;
         match input {
@@ -821,7 +816,6 @@ pub(crate) fn process_player_input_movement_for_fps(
                 if std_jump {
                     if !movement.had_jump_event {
                         movement.had_jump_event = true;
-                        // let sluggishness = movement.medium_friction.remap(0., MAX_JUMP_MEDIUM_THICKNESS, 1.0, 0.25);
                         let sluggishness = move_scale.min(1.0);
                         // Jump strictly up.
                         jump_impulse = Vector::new(

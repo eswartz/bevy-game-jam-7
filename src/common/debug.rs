@@ -3,6 +3,8 @@ use std::collections::BTreeMap;
 use bevy::prelude::*;
 use bevy_egui::{EguiContext, EguiContexts, EguiPrimaryContextPass, PrimaryEguiContext};
 
+use crate::common::GameplayState;
+
 use super::{gui::GuiState, states_sets::OverlayState};
 
 pub struct DebugPlugin;
@@ -10,25 +12,22 @@ pub struct DebugPlugin;
 impl Plugin for DebugPlugin {
     fn build(&self, app: &mut App) {
         app
-        .add_systems(
-            EguiPrimaryContextPass,
-            (
-                update_egui_inspector_ui.run_if(|gui_state: Res<GuiState>, ovl_state: Res<State<OverlayState>>|
-                    gui_state.show_inspector_always ||
-                    (gui_state.show_inspector && ovl_state.get().is_debug())),
-            ),
-        )
-        // .add_systems(
-        //     EguiPrimaryContextPass,
-        //     (
-        //         show_egui_settings,
-        //         update_help_ui.run_if(|gui_state: Res<GuiState>| gui_state.show_help),
-        //     )
-        //     .chain()
-        //     // .after(EguiStartupSet::InitContexts)
-        //     // .in_set(InteractionSystems)
-        //     .run_if(in_state(OverlayState::DebugGuiVisible))
-        // )
+            .add_systems(
+                PreUpdate,
+                (setup_egui_style, ensure_egui_context)
+                    .chain()
+                    .run_if(egui_not_initialized)
+                    .run_if(in_state(GameplayState::Playing)),
+            )
+
+            .add_systems(
+                EguiPrimaryContextPass,
+                (
+                    update_egui_inspector_ui.run_if(|gui_state: Res<GuiState>, ovl_state: Res<State<OverlayState>>|
+                        gui_state.show_inspector_always ||
+                        (gui_state.show_inspector && ovl_state.get().is_debug())),
+                ),
+            )
         ;
     }
 }
