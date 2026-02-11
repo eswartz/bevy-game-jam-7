@@ -3,7 +3,9 @@ use bevy::input::mouse::AccumulatedMouseMotion;
 use bevy::prelude::*;
 
 use crate::common::GuiAssets;
-use crate::common::OurCamera;
+use crate::common::RENDER_LAYER_DEFAULT;
+use crate::common::RENDER_LAYER_VIEW;
+use crate::common::WorldCamera;
 use crate::common::is_in_menu;
 
 use super::states_sets::OverlayState;
@@ -71,7 +73,7 @@ fn init_crosshair(
             Name::new("Crosshair"),
             DespawnOnExit(ProgramState::InGame),
             Crosshair(0.),
-            RenderLayers::from_layers(&[0, 1]),
+            RenderLayers::from_layers(&[RENDER_LAYER_DEFAULT, RENDER_LAYER_VIEW]),
             Transform::from_xyz(0., 0., -10.),
             Visibility::Visible,
             Node {
@@ -152,7 +154,7 @@ pub(crate) struct CrosshairDetarget(pub(crate) Entity);
 fn check_crosshair_target(
     mut commands: Commands,
     crosshair_q: Single<&Crosshair>,
-    camera_q: Single<&GlobalTransform, (With<Camera3d>, With<OurCamera>)>,
+    camera_q: Single<&GlobalTransform, (With<Camera3d>, With<WorldCamera>)>,
     // level: Res<LevelMetadata>,
     targetable_q: Query<&CrosshairTargetable>,
     parent_q: Query<&ChildOf>,

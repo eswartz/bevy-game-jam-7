@@ -1,5 +1,7 @@
+use std::time::Duration;
+
 use crate::assets::*;
-use crate::game::{Base, Generator, LevelInfo, LevelList, ShakeRequest, ShakeTime, ShakingSound, SpawnDelay, Spawned, Spawning, is_in_level};
+use crate::game::{Base, Generator, LevelInfo, LevelList, Spawned, is_in_level};
 use crate::common::*;
 
 use bevy::audio::PlaybackSettings;
@@ -7,7 +9,6 @@ use bevy_seedling::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 use rand::RngExt;
 use rand::seq::IndexedRandom;
-
 
 use avian3d::prelude::*;
 use bevy::prelude::*;
@@ -23,7 +24,11 @@ impl Plugin for Level0Plugin {
         app
             .add_systems(
                 OnExit(GameplayState::AssetsLoaded),
-                register_level
+                on_assets_loaded
+            )
+            .add_systems(
+                OnEnter(LevelState::Loaded),
+                on_level_loaded
             )
             .add_systems(
                 Update,
@@ -37,30 +42,60 @@ impl Plugin for Level0Plugin {
             )
             .add_systems(
                 FixedUpdate,
-                (shake_base, check_actions)
-                    .run_if(is_in_level(ID))
-                    .run_if(not(is_paused))
-                    .run_if(not(is_in_menu))
-                    .run_if(not(egui_wants_any_keyboard_input))
-                    .run_if(in_state(ProgramState::InGame)),
-            )
-            .add_systems(FixedUpdate,
-                (
+                (shake_base, check_actions,
                     spawn_ball,
                 )
                 .run_if(is_in_level(ID))
+                .run_if(not(is_paused))
+                .run_if(not(is_in_menu))
+                .run_if(not(egui_wants_any_keyboard_input))
                 .run_if(in_state(LevelState::Playing))
+                .run_if(in_state(ProgramState::InGame))
             )
         ;
     }
 }
 
-fn register_level(mut list: ResMut<LevelList>, maps: Res<MapAssets>) {
+
+/// Is spawning active?
+#[derive(Resource, Reflect, Default)]
+#[reflect(Resource, Default)]
+#[type_path = "game"]
+pub(crate) struct Spawning(pub bool);
+
+/// Delay between spawns.
+#[derive(Resource, Reflect, Default)]
+#[reflect(Resource, Default)]
+#[type_path = "game"]
+pub(crate) struct SpawnDelay(pub(crate) Duration);
+
+/// Apply shaking from user action.
+#[derive(Resource)]
+pub(crate) struct ShakeRequest(pub(crate) Vec3);
+
+/// How long some kind of shaking is active.
+#[derive(Resource)]
+pub(crate) struct ShakeTime(pub(crate) Duration);
+
+/// Set while shaking sound active.
+#[derive(Component)]
+pub(crate) struct ShakingSound;
+
+fn on_assets_loaded(mut list: ResMut<LevelList>, maps: Res<MapAssets>) {
     list.0.push(LevelInfo {
         id: ID.to_string(),
         label: NAME.to_string(),
         scene: maps.level_test.clone()
     });
+}
+
+fn on_level_loaded(mut commands: Commands) {
+    commands.insert_resource(Spawning(false));
+    commands.insert_resource(SpawnDelay(Duration::from_secs(1)));
+    commands.insert_resource(ShakeRequest(Vec3::ZERO));
+    commands.insert_resource(ShakeTime(Duration::ZERO));
+
+    commands.set_state(LevelState::Playing);
 }
 
 fn spawn_ball(
@@ -69,7 +104,6 @@ fn spawn_ball(
     listener_q: Query<&Transform, With<SpatialListener3D>>,
     delay: Res<SpawnDelay>,
     time: Res<Time<Physics>>,
-    assets: Res<AssetServer>,
     spawning: Res<Spawning>,
     fx: Res<FxAssets>,
     models: Res<ModelAssets>,
@@ -197,7 +231,7 @@ fn check_actions(
 fn shake_base(
     base: Res<Base>,
     shake: Option<Res<ShakeRequest>>,
-    camera: Query<&GlobalTransform, With<Camera3d>>,
+    camera: Query<&GlobalTransform, (With<Camera3d>, With<WorldCamera>)>,
     mut commands: Commands,
     mut forces: Query<(&Transform, Forces)>,
 ) {

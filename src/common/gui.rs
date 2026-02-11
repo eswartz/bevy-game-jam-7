@@ -9,6 +9,8 @@ use bevy_asset_loader::prelude::*;
 use bevy_inspector_egui::DefaultInspectorConfigPlugin;
 use bevy_seedling::prelude::MainBus;
 
+use crate::common::RENDER_LAYER_UI;
+
 use super::audio::UserVolume;
 use super::lifecycle::PauseState;
 use super::states_sets::OverlayState;
@@ -148,7 +150,7 @@ pub fn setup_loading_screen(
             .. default()
         },
         BackgroundColor(tailwind::BLUE_950.with_alpha(0.75).into()),
-        RenderLayers::from_layers(&[1]),
+        RenderLayers::from_layers(&[RENDER_LAYER_UI]),
     ))
     .with_children(|builder| {
         builder.spawn((

@@ -93,7 +93,7 @@ fn collect_player_movement(
     cam_settings: Res<PlayerCameraSettings>,
     mut writer: MessageWriter<PlayerInput>,
     player_vel_q: Single<(Entity, &LinearVelocity), With<OurPlayer>>,
-    mut cam_q: Single<&mut OurCamera>,
+    mut cam_q: Single<&mut OurCamera, With<WorldCamera>>,
     time: Res<Time>,
 ) {
     let mut instant_thrust = Vec3::ZERO;

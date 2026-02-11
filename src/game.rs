@@ -6,7 +6,10 @@ use crate::common::*;
 
 use bevy::asset::uuid::Uuid;
 use bevy::audio::PlaybackSettings;
+use bevy::camera::Exposure;
+use bevy::camera::visibility::RenderLayers;
 use bevy::ecs::world::CommandQueue;
+use bevy::render::view::Hdr;
 use bevy_asset_loader::loading_state::LoadingStateAppExt as _;
 use bevy_asset_loader::loading_state::config::{ConfigureLoadingState as _, LoadingStateConfig};
 use bevy_seedling::prelude::*;
@@ -29,10 +32,7 @@ impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         app
             .insert_resource(LevelList(default()))
-            .insert_resource(Spawning(false))
             .insert_resource(Base(Entity::PLACEHOLDER, Transform::IDENTITY))
-            .insert_resource(ShakeRequest(Vec3::ZERO))
-            .insert_resource(ShakeTime(Duration::ZERO))
             .add_observer(observe_spawn_mesh)
 
             .add_plugins(level0::Level0Plugin)
@@ -112,30 +112,6 @@ pub(crate) struct Spawned;
 #[type_path = "game"]
 pub(crate) struct Base(pub Entity, pub Transform);
 
-/// Is spawning active?
-#[derive(Resource, Reflect, Default)]
-#[reflect(Resource, Default)]
-#[type_path = "game"]
-pub(crate) struct Spawning(pub bool);
-
-/// Delay between spawns.
-#[derive(Resource, Reflect, Default)]
-#[reflect(Resource, Default)]
-#[type_path = "game"]
-pub(crate) struct SpawnDelay(pub(crate) Duration);
-
-/// Apply shaking from user action.
-#[derive(Resource)]
-pub(crate) struct ShakeRequest(pub(crate) Vec3);
-
-/// How long some kind of shaking is active.
-#[derive(Resource)]
-pub(crate) struct ShakeTime(pub(crate) Duration);
-
-/// Set while shaking sound active.
-#[derive(Component)]
-pub(crate) struct ShakingSound;
-
 fn observe_spawn_mesh(
     ready: On<SceneInstanceReady>,
     children: Query<&Children>,
@@ -195,8 +171,10 @@ fn observe_spawn_mesh(
 }
 
 pub(crate) fn spawn_player_on_start(world: &mut World) {
+    // Make the player collision model and Player
     let ent = spawn_player(world, Uuid::default());
 
+    // Move to start position/orientation.
     let mut start_q = world.query_filtered::<&Transform, (With<PlayerStart>, Without<OurPlayer>)>();
     let Ok(xfrm) = start_q.single(world) else {
         log::error!("no PlayerStart or OurPlayer");
@@ -244,10 +222,6 @@ pub(crate) fn spawn_level(
 
     let level = commands
         .spawn((SceneRoot(level.0.scene.clone()),))
-        .observe(|_ready: On<SceneInstanceReady>, mut commands: Commands| {
-            commands.insert_resource(Spawning(false));
-            commands.insert_resource(SpawnDelay(Duration::from_secs(1)));
-        })
         .id();
 
     commands.entity(*world).add_child(level);

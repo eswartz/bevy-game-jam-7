@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use bevy::prelude::*;
 use bevy_egui::{EguiContext, EguiContexts, EguiPrimaryContextPass, PrimaryEguiContext};
 
-use crate::common::GameplayState;
+use crate::common::{GameplayState, WorldCamera};
 
 use super::{gui::GuiState, states_sets::OverlayState};
 
@@ -32,12 +32,12 @@ impl Plugin for DebugPlugin {
     }
 }
 
-pub(crate) fn egui_not_initialized(camera_q: Query<Entity, (With<Camera3d>, With<PrimaryEguiContext>)>) -> bool
+pub(crate) fn egui_not_initialized(camera_q: Query<Entity, (With<Camera3d>, With<WorldCamera>, With<PrimaryEguiContext>)>) -> bool
 {
     camera_q.single().is_err()
 }
 
-pub(crate) fn ensure_egui_context(mut commands: Commands, camera_q: Query<Entity, (With<Camera3d>, Without<PrimaryEguiContext>)>)      {
+pub(crate) fn ensure_egui_context(mut commands: Commands, camera_q: Query<Entity, (With<Camera3d>, With<WorldCamera>, Without<PrimaryEguiContext>)>)      {
     for camera_ent in camera_q.iter() {
         eprintln!("A {camera_ent}");
         commands.entity(camera_ent).insert(
@@ -84,7 +84,7 @@ pub(crate) fn update_egui_inspector_ui(
     // Find the current context using the world's querying.
     // We'll need to clone this to avoid double-borrow of `world` below.
     let Ok(egui_context) = world
-        .query_filtered::<&mut EguiContext, With<Camera3d>>()
+        .query_filtered::<&mut EguiContext, (With<Camera3d>, With<WorldCamera>)>()
         .single_mut(world) else { return };
 
     egui::Window::new("Inspector")

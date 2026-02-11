@@ -203,14 +203,15 @@ fn main() -> AppExit {
 
 fn ensure_3d_camera(
     mut commands: Commands,
-    camera_q: Query<Entity, With<OurCamera>>,
+    world_camera_q: Query<Entity, (With<Camera3d>, With<WorldCamera>)>,
+    view_camera_q: Query<Entity, (With<Camera3d>, With<ViewerCamera>)>,
     render_device: Res<RenderDevice>,
     render_adapter: Res<RenderAdapter>,
 ) {
     let use_clustered =
         bevy::pbr::decal::clustered::clustered_decals_are_usable(&render_device, &render_adapter);
 
-    let ent = if let Ok(ent) = camera_q.single() {
+    let ent = if let Ok(ent) = world_camera_q.single() {
         // Got one.
         ent
     } else {
@@ -219,39 +220,94 @@ fn ensure_3d_camera(
         commands.spawn_empty().id()
     };
 
+    configure_world_camera(commands.get_entity(ent).unwrap(), use_clustered);
+
+    ////
+
+    let ent = if let Ok(ent) = view_camera_q.single() {
+        // Got one.
+        ent
+    } else {
+        info!("Creating viewer camera");
+
+        commands.spawn_empty().id()
+    };
+
+    configure_viewer_camera(commands.get_entity(ent).unwrap(), use_clustered);
+
+    ////
+
     // Force init.
     commands.insert_resource(VideoCameraSettingsChanged);
     commands.insert_resource(VideoEffectSettingsChanged);
-
-    configure_3d_camera(commands.get_entity(ent).unwrap(), use_clustered);
 }
 
-fn configure_3d_camera(mut ent_commands: EntityCommands, use_clustered: bool) {
-    info!("Setting up camera");
+fn configure_world_camera(mut ent_commands: EntityCommands, use_clustered: bool) {
     ent_commands.insert((
-        Name::new("Camera"),
-        Camera3d::default(),
-        Exposure { ev100: 10.0 },
-        Camera {
-            clear_color: Color::BLACK.into(),
-            ..default()
-        },
-        Hdr,
-        Projection::Perspective(PerspectiveProjection {
-            // fov: std::f32::consts::PI / 5.0,
-            fov: 75f32.to_radians(),
-            ..default()
-        }),
-        OrderIndependentTransparencySettings::default(),
-        Msaa::Off,
+        (
+            Name::new("WorldCamera"),
+            WorldCamera,
+            Camera3d::default(),
+            RenderLayers::layer(RENDER_LAYER_DEFAULT),
 
-        DespawnOnExit(GameplayState::Playing),
-        PlayerCamera(CameraMode::FirstPerson),
-        OurCamera::default(),
-        Transform::from_xyz(0., 1., 0.),
+            Exposure { ev100: 10.0 },
+            Camera {
+                order: 1,
+                clear_color: Color::BLACK.into(),
+                ..default()
+            },
+            Hdr,
+            Projection::Perspective(PerspectiveProjection {
+                // fov: std::f32::consts::PI / 5.0,
+                fov: 75f32.to_radians(),
+                ..default()
+            }),
+            OrderIndependentTransparencySettings::default(),
+            Msaa::Off,
 
-        // Audio is from the perspective of the camera.
-        SpatialListener3D::default(),
+            PlayerCamera(CameraMode::FirstPerson),
+            OurCamera::default(),
+            Transform::from_xyz(0., 1., 0.),
+
+            // Audio is from the perspective of the camera.
+            SpatialListener3D::default(),
+
+            DespawnOnExit(GameplayState::Playing),
+        ),
+    ));
+
+    if !use_clustered {
+        ent_commands.insert(DepthPrepass);
+    }
+}
+
+fn configure_viewer_camera(mut ent_commands: EntityCommands, use_clustered: bool) {
+    ent_commands.insert((
+        (
+            Name::new("ViewCamera"),
+            ViewerCamera,
+            Camera3d::default(),
+            RenderLayers::layer(RENDER_LAYER_VIEW),
+
+            Exposure { ev100: 10.0 },
+            Camera {
+                order: 2,
+                clear_color: ClearColorConfig::None,
+                ..default()
+            },
+            Hdr,
+            Projection::Perspective(PerspectiveProjection {
+                fov: 75f32.to_radians(),
+                ..default()
+            }),
+            OrderIndependentTransparencySettings::default(),
+            Msaa::Off,
+
+            OurCamera::default(),
+            Transform::from_xyz(0., 1., 0.),
+
+            DespawnOnExit(GameplayState::Playing),
+        ),
     ));
 
     if !use_clustered {
@@ -289,7 +345,7 @@ fn on_enter_initializing(mut commands: Commands, camera_q: Query<&Camera, With<C
                 clear_color: ClearColorConfig::Default,
                 ..default()
             },
-            RenderLayers::from_layers(&[1]),
+            RenderLayers::from_layers(&[RENDER_LAYER_UI]),
         ));
     }
 }

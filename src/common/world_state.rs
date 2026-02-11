@@ -444,7 +444,7 @@ fn check_level_setup(
     if *setup == WorldSetup::default() {
         commands.set_state(OverlayState::Hidden);
         commands.set_state(GameplayState::Playing);
-        commands.set_state(LevelState::Playing);
+        commands.set_state(LevelState::Loaded);
         pause.set_menu_paused(false);
     }
 }

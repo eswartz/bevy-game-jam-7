@@ -14,6 +14,7 @@ use bevy::render::view::ColorGradingSection;
 
 use crate::assets::SkyboxAssets;
 use crate::common::SkyboxTransform;
+use crate::common::WorldCamera;
 
 use super::states_sets::GameplayState;
 use super::states_sets::ProgramState;
@@ -51,7 +52,7 @@ impl Plugin for WorldUiPlugin {
 pub fn apply_camera_settings(
     trigger: Option<Res<VideoCameraSettingsChanged>>,
     mut commands: Commands,
-    mut camera_q: Query<&mut Projection, With<Camera3d>>,
+    mut camera_q: Query<&mut Projection, (With<Camera3d>, With<WorldCamera>)>,
     video_settings: Res<VideoSettings>,
 ) {
     if trigger.is_none() {
@@ -72,7 +73,7 @@ pub fn apply_camera_settings(
 pub fn apply_effect_settings(
     trigger: Option<Res<VideoEffectSettingsChanged>>,
     mut commands: Commands,
-    mut camera_q: Query<(Entity, &mut Camera3d)>, //, With<OurCamera>>,
+    mut camera_q: Query<(Entity, &mut Camera3d)>, // all cameras
     video_settings: Res<VideoSettings>,
 ) {
     if trigger.is_none() {
@@ -180,7 +181,7 @@ pub fn apply_effect_settings(
 
 pub(crate) fn init_sandbox_skybox(
     mut commands: Commands,
-    cam_q: Query<Entity, With<Camera3d>>,
+    cam_q: Query<Entity, (With<Camera3d>, With<WorldCamera>)>,
     skyboxes: Res<SkyboxAssets>,
 ) {
     if let Ok(cam) = cam_q.single() {

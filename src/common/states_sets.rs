@@ -111,6 +111,8 @@ pub enum LevelState {
     /// Default state
     #[default]
     Initializing,
+    /// Content loaded.
+    Loaded,
     /// Ready to play.
     Playing,
     /// Switching levels.

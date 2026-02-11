@@ -152,27 +152,8 @@ fn on_enter_main_menu(
         //     ..default()
         // },
         // PrettyTextMaterial(glyph_mats.add(TitleShader::default())),
-        RenderLayers::layer(1),
+        RenderLayers::layer(RENDER_LAYER_UI),
         Transform::from_xyz(0., 300.0, 0.),
-    ));
-    commands.spawn((
-        DespawnOnExit(OverlayState::MainMenu),
-        Camera3d::default(),
-        Camera {
-            is_active: true,
-            order: -2,
-            clear_color: Color::NONE.into(),
-            ..default()
-        },
-        Projection::Orthographic(OrthographicProjection {
-            scaling_mode: bevy::camera::ScalingMode::FixedVertical {
-                viewport_height: 1000.0,
-            },
-            ..OrthographicProjection::default_3d()
-        }),
-        Transform::from_translation(Vec3::new(0., 0., 1.))
-            .looking_at(Vec3::new(0., 0., 0.), Vec3::Y),
-        RenderLayers::layer(1),
     ));
 
     MenuItemBuilder::new(
@@ -526,13 +507,11 @@ fn on_enter_controls_menu(
                  mut toggle_q: Query<&mut MenuToggle>,
                  res: Res<PlayerControllerSettings>| {
                      let current = res.$field;
-                     eprintln!("get toggle {current}");
                     toggle_q.get_mut(entity).unwrap().current = Some(current);
                 },
             ));
             let $setter = commands.register_system(IntoSystem::into_system(
                 |In(v): In<bool>, mut res: ResMut<PlayerControllerSettings>| {
-                    eprintln!("set toggle {v}");
                     res.$field = v;
                 },
             ));

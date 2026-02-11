@@ -83,7 +83,9 @@ pub struct SkyboxAssets {
 
 #[derive(Resource, AssetCollection)]
 pub struct ModelAssets {
-
     #[asset(path = "models/sphere.glb#Scene0")]
     pub sphere: Handle<Scene>,
+
+    #[asset(path = "models/net.glb#Scene0")]
+    pub net: Handle<Scene>,
 }

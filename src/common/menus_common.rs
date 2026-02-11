@@ -26,6 +26,7 @@ use bevy::ui::RelativeCursorPosition;
 use bevy::window::PrimaryWindow;
 use rustc_hash::FxBuildHasher;
 
+use crate::common::RENDER_LAYER_UI;
 use crate::common::is_in_menu;
 
 use super::states_sets::OverlayState;
@@ -503,7 +504,7 @@ fn create_menu_page_node() -> (Node, BackgroundColor, RenderLayers) {
             ..default()
         },
         BackgroundColor(tailwind::BLUE_900.with_alpha(0.25).into()),
-        RenderLayers::from_layers(&[1]),
+        RenderLayers::from_layers(&[RENDER_LAYER_UI]),
     )
 }
 

@@ -29,3 +29,26 @@ pub enum GameLayer {
     /// Layer 4 - temporary bullets/projectiles/etc.
     Projectiles,
 }
+
+
+/// Used implicitly by all entities without a `RenderLayers` component.
+/// Our world model camera and all objects other than the player are on this layer.
+/// The light source belongs to both layers.
+pub const RENDER_LAYER_DEFAULT: usize = 0;
+
+/// Used by the view model camera and the player's arm.
+/// The light source belongs to both layers.
+pub const RENDER_LAYER_VIEW: usize = 1;
+
+/// Shows UI overlays.
+pub const RENDER_LAYER_UI: usize = 10;
+
+/// Mark the world camera
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+pub struct WorldCamera;
+
+/// Mark the viewer camera (e.g player)
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+pub struct ViewerCamera;

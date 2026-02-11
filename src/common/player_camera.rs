@@ -189,7 +189,7 @@ impl OurCamera {
 
 pub(crate) fn sync_camera_to_player(
     mut player_q: Single<(&Transform, &PlayerLook, &ColliderAabb, &mut Visibility), (With<OurPlayer>, Without<Camera3d>)>,
-    mut camera_q: Single<(&PlayerCamera, &mut Transform, &OurCamera), With<Camera3d>>,
+    mut camera_q: Single<(&PlayerCamera, &mut Transform, &OurCamera), (With<Camera3d>, With<WorldCamera>)>,
     time: Res<Time>,
 ) {
     let (player_xfrm, look, player_aabb, ref mut model_visibility) = *player_q;
@@ -234,7 +234,7 @@ pub(crate) fn sync_camera_to_player(
 
 pub(crate) fn handle_player_camera_actions(
     action_state: Res<ActionState<UserAction>>,
-    mut camera_q: Single<&mut PlayerCamera, With<OurCamera>>,
+    mut camera_q: Single<&mut PlayerCamera, (With<WorldCamera>, With<OurCamera>)>,
 ) {
     if action_state.just_pressed(&UserAction::ChangeCamera) {
         camera_q.0 = camera_q.0.next();
@@ -242,13 +242,13 @@ pub(crate) fn handle_player_camera_actions(
 }
 
 pub(crate) fn show_3d_camera(mut camera_q: Query<&mut Camera, (With<Camera3d>, With<OurCamera>)>) {
-    if let Ok(mut camera) = camera_q.single_mut() {
+    for mut camera in camera_q.iter_mut() {
         camera.is_active = true;
     }
 }
 
 pub(crate) fn hide_3d_camera(mut camera_q: Query<&mut Camera, (With<Camera3d>, With<OurCamera>)>) {
-    if let Ok(mut camera) = camera_q.single_mut() {
+    for mut camera in camera_q.iter_mut() {
         camera.is_active = false;
     }
 }
