@@ -46,7 +46,7 @@ pub struct FxAssets {
 
 #[derive(Resource, AssetCollection)]
 pub struct MapAssets {
-    #[asset(path = "test.glb#Scene0")]
+    #[asset(path = "models/test.glb#Scene0")]
     pub level_test: Handle<Scene>,
 }
 
@@ -79,4 +79,11 @@ pub struct SkyboxAssets {
     // #[asset(path = "textures/zwinger_night_4k.exr")]
     // #[allow(unused)]
     // pub zwinger: Handle<Image>,
+}
+
+#[derive(Resource, AssetCollection)]
+pub struct ModelAssets {
+
+    #[asset(path = "models/sphere.glb#Scene0")]
+    pub sphere: Handle<Scene>,
 }

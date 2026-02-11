@@ -1,13 +1,8 @@
-use std::time::Duration;
-
 use crate::assets::*;
 use crate::game::{Base, Generator, LevelInfo, LevelList, ShakeRequest, ShakeTime, ShakingSound, SpawnDelay, Spawned, Spawning, is_in_level};
-use crate::player_spawning::spawn_player;
 use crate::common::*;
 
-use bevy::asset::uuid::Uuid;
 use bevy::audio::PlaybackSettings;
-use bevy::ecs::world::CommandQueue;
 use bevy_seedling::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 use rand::RngExt;
@@ -16,10 +11,6 @@ use rand::seq::IndexedRandom;
 
 use avian3d::prelude::*;
 use bevy::prelude::*;
-use bevy::{
-    gltf::GltfMeshName,
-    scene::SceneInstanceReady,
-};
 use bevy_egui::input::egui_wants_any_keyboard_input;
 
 pub(crate) const ID: &str = "level0";
@@ -81,6 +72,7 @@ fn spawn_ball(
     assets: Res<AssetServer>,
     spawning: Res<Spawning>,
     fx: Res<FxAssets>,
+    models: Res<ModelAssets>,
     mut timer: Local<Timer>,
 ) {
     if !spawning.0 {
@@ -103,9 +95,7 @@ fn spawn_ball(
 
     for (_ent, xfrm) in generator_q.iter() {
         commands.spawn((
-            SceneRoot(assets.load(
-                GltfAssetLabel::Scene(0).from_asset("sphere.glb"),
-                )),
+            SceneRoot(models.sphere.clone()),
             xfrm.with_scale(Vec3::splat(time.elapsed_secs() % 1.0 + 0.5)),
             Spawned,
         ))
@@ -144,18 +134,13 @@ fn spawn_ball(
 }
 
 fn check_actions(
-    // keys: Res<ButtonInput<KeyCode>>,
     actions: Res<ActionState<UserAction>>,
     fx: Res<FxAssets>,
-    base: Res<Base>,
     time: Res<Time<Physics>>,
     shake_q: Query<Entity, With<ShakingSound>>,
     mut shake_time: ResMut<ShakeTime>,
     spawning: Res<Spawning>,
-    overlay: Res<State<OverlayState>>,
-
     mut commands: Commands,
-    mut forces: Query<Forces>,
 ) {
     if actions.just_released(&UserAction::Interact) {
         let new_state = !spawning.0;
@@ -170,23 +155,19 @@ fn check_actions(
         ));
         commands.insert_resource(Spawning(new_state))
     }
-    if actions.just_released(&UserAction::AlternateFire) {
-        if let Ok(mut force) = forces.get_mut(base.0) {
-            // dbg!(base.0);
-            let mut x = 1000.0 * (time.elapsed_secs() % 5.0);
-            if time.elapsed_secs() % 1.0 < 0.5 {
-                x = -x;
-            }
-            force.apply_local_linear_impulse(Vec3::new(x, 0.0, -x));
-        }
-    }
 
+    let mut rng = rand::rng();
+
+    // Shake the base with left/right/up/down.
     let mut new_shake = Vec3::ZERO;
     if let Some(move_lr) = actions.axis_data(&UserAction::MoveLeftRight2d) {
         new_shake.x = move_lr.value;
     }
     if let Some(move_ud) = actions.axis_data(&UserAction::MoveDownUp2d) {
-        new_shake.y = move_ud.value;
+        new_shake.z = move_ud.value;
+    }
+    if new_shake.length() > 0. {
+        new_shake.y = if rng.random_bool(0.5) { -1. } else { 1. };
     }
     if new_shake.length() > 0.0 {
         commands.insert_resource(ShakeRequest(new_shake * time.delta_secs()));
@@ -219,7 +200,6 @@ fn shake_base(
     camera: Query<&GlobalTransform, With<Camera3d>>,
     mut commands: Commands,
     mut forces: Query<(&Transform, Forces)>,
-    mut shaking: Local<bool>,
 ) {
     if let Ok((xfrm, mut forces)) = forces.get_mut(base.0) {
         if let Some(shake) = shake {
@@ -232,13 +212,10 @@ fn shake_base(
             }
         } else {
             // Come to rest.
-            *shaking = false;
             let diff = xfrm.translation - base.1.translation;
             let vel = forces.linear_velocity();
             if vel.length() > 0.0001 {
-                let force = -(vel + diff) * 100.0;
-                // dbg!(&force);
-                // forces.apply_local_force(force);
+                let force = -(vel + diff) * 1000.0;
                 forces.apply_local_linear_impulse(force);
             }
         }

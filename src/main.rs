@@ -161,7 +161,6 @@ fn main() -> AppExit {
                 LoadingState::new(GameplayState::AssetsLoading)
                     .continue_to_state(GameplayState::AssetsLoaded)
                     .load_collection::<SkyboxAssets>()
-                    .load_collection::<MapAssets>()
             )
 
         .add_systems(OnEnter(ProgramState::Initializing), on_enter_initializing)

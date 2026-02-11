@@ -7,6 +7,8 @@ use crate::common::*;
 use bevy::asset::uuid::Uuid;
 use bevy::audio::PlaybackSettings;
 use bevy::ecs::world::CommandQueue;
+use bevy_asset_loader::loading_state::LoadingStateAppExt as _;
+use bevy_asset_loader::loading_state::config::{ConfigureLoadingState as _, LoadingStateConfig};
 use bevy_seedling::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 use rand::RngExt;
@@ -34,6 +36,12 @@ impl Plugin for GamePlugin {
             .add_observer(observe_spawn_mesh)
 
             .add_plugins(level0::Level0Plugin)
+
+            .configure_loading_state(
+                LoadingStateConfig::new(ProgramState::Initializing)
+                    .load_collection::<MapAssets>()
+                    .load_collection::<ModelAssets>()
+            )
 
             .add_systems(
                 OnExit(GameplayState::AssetsLoaded),
