@@ -14,6 +14,7 @@ use bevy::ecs::world::CommandQueue;
 use bevy_seedling::prelude::*;
 use common::*;
 use rand::RngExt;
+use rand::seq::IndexedRandom;
 
 use std::time::Duration;
 
@@ -490,6 +491,7 @@ pub(crate) fn spawn_level(
 fn spawn_ball(
     mut commands: Commands,
     generator_q: Query<(Entity, &Transform), With<Generator>>,
+    listener_q: Query<&Transform, With<SpatialListener3D>>,
     time: Res<Time<Physics>>,
     assets: Res<AssetServer>,
     spawning: Res<Spawning>,
@@ -507,6 +509,10 @@ fn spawn_ball(
     if !timer.tick(time.delta()).just_finished() {
         return;
     }
+
+    // Fetch the spatializer location to avoid miscalculation.
+    // To avoid https://github.com/CorvusPrudens/bevy_seedling/issues/87
+    let spat_xfrm_opt = listener_q.iter().next();
 
     let mut rng = rand::rng();
 
@@ -528,11 +534,21 @@ fn spawn_ball(
 
             // To avoid https://github.com/CorvusPrudens/bevy_seedling/issues/87
             sample_effects![SpatialBasicNode {
-                offset: Vec3::new(10.0, 10.0, 10.0).into(),
+                offset: (if let Some(spat_xfrm) = spat_xfrm_opt {
+                    spat_xfrm.translation - xfrm.translation
+                } else {
+                     Vec3::new(10.0, 10.0, 10.0)
+                })
+                    .into(),
                 ..default()
             }],
 
-            SamplePlayer::new(fx.belch.clone()),
+            // Another workaround: choose one of a similar sound
+            // else the pool tends to get stuck and not play anything.
+            SamplePlayer::new((*[
+                &fx.belch_1, &fx.belch_2, &fx.belch_3,
+                ].choose(&mut rng).unwrap()).clone()),
+
             // SamplePlayer::new(fx.tone.clone()),
             PlaybackSettings {
                 speed: rng.random_range(0.75 .. 1.25),
