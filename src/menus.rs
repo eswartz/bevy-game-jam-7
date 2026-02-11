@@ -525,11 +525,14 @@ fn on_enter_controls_menu(
                 |In(entity): In<Entity>,
                  mut toggle_q: Query<&mut MenuToggle>,
                  res: Res<PlayerControllerSettings>| {
-                    toggle_q.get_mut(entity).unwrap().current = Some(res.$field);
+                     let current = res.$field;
+                     eprintln!("get toggle {current}");
+                    toggle_q.get_mut(entity).unwrap().current = Some(current);
                 },
             ));
             let $setter = commands.register_system(IntoSystem::into_system(
                 |In(v): In<bool>, mut res: ResMut<PlayerControllerSettings>| {
+                    eprintln!("set toggle {v}");
                     res.$field = v;
                 },
             ));

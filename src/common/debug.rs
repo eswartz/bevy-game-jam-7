@@ -34,7 +34,7 @@ impl Plugin for DebugPlugin {
 
 pub(crate) fn egui_not_initialized(camera_q: Query<Entity, (With<Camera3d>, With<PrimaryEguiContext>)>) -> bool
 {
-    camera_q.iter().next().is_none()
+    camera_q.single().is_err()
 }
 
 pub(crate) fn ensure_egui_context(mut commands: Commands, camera_q: Query<Entity, (With<Camera3d>, Without<PrimaryEguiContext>)>)      {

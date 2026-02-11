@@ -930,6 +930,7 @@ fn handle_menu_slider_refresh(
             continue;
         };
         let mut msg = format!("{} ({:.1})", &base_text.0, (slider.to_ui_fn)(*value));
+        // Allow slider with toggle.
         if let Some(toggle) = toggle {
             let Some(value) = toggle.current.as_ref() else {
                 continue;
@@ -1009,16 +1010,16 @@ fn handle_menu_toggle_refresh(
 fn handle_menu_toggle_actions(
     mut commands: Commands,
     mut reader: MessageReader<MenuActionMessage>,
-    mut toggle_q: Query<(&mut MenuToggle, Option<&MenuSlider>)>,
+    mut toggle_q: Query<&mut MenuToggle>,
 ) {
     for event in reader.read() {
         let entity = event.entity();
 
-        let Ok((mut toggle, slider_opt)) = toggle_q.get_mut(entity) else {
+        let Ok(mut toggle) = toggle_q.get_mut(entity) else {
             continue;
         };
 
-        if slider_opt.is_some() && !matches!(event, MenuActionMessage::Activate(_))
+        if !matches!(event, MenuActionMessage::Activate(_))
         {
             continue
         }
