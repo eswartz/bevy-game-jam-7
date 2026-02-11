@@ -27,6 +27,8 @@ impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(Spawning(false))
             .insert_resource(Base(Entity::PLACEHOLDER, Transform::IDENTITY))
+            .insert_resource(ShakeRequest(Vec3::ZERO))
+            .insert_resource(ShakeTime(Duration::ZERO))
             .add_observer(observe_spawn_mesh)
             // .add_systems(
             //     OnEnter(GameplayState::AssetsLoaded), on_enter_initializing)
@@ -95,11 +97,17 @@ struct Spawning(pub bool);
 #[derive(Resource)]
 pub(crate) struct SpawnDelay(pub(crate) Duration);
 
+/// Apply shaking from user action.
+#[derive(Resource)]
+struct ShakeRequest(Vec3);
 
-#[derive(Resource, Reflect, Default)]
-#[reflect(Resource, Default)]
-#[type_path = "game"]
-struct Shake(pub Vec3);
+/// How long some kind of shaking is active.
+#[derive(Resource)]
+struct ShakeTime(Duration);
+
+/// Set while shaking sound active.
+#[derive(Component)]
+struct ShakingSound;
 
 fn observe_spawn_mesh(
     ready: On<SceneInstanceReady>,
@@ -197,7 +205,6 @@ pub(crate) fn spawn_level(
         .observe(|_ready: On<SceneInstanceReady>, mut commands: Commands| {
             commands.insert_resource(Spawning(true));
             commands.insert_resource(SpawnDelay(Duration::from_secs(1)));
-            commands.insert_resource(Shake(Vec3::ZERO));
         })
         .id();
 
@@ -277,10 +284,11 @@ fn spawn_ball(
 fn check_actions(
     // keys: Res<ButtonInput<KeyCode>>,
     actions: Res<ActionState<UserAction>>,
-
+    fx: Res<FxAssets>,
     base: Res<Base>,
     time: Res<Time<Physics>>,
-    shake: Option<Res<Shake>>,
+    shake_q: Query<Entity, With<ShakingSound>>,
+    mut shake_time: ResMut<ShakeTime>,
     spawning: Res<Spawning>,
     overlay: Res<State<OverlayState>>,
 
@@ -314,13 +322,33 @@ fn check_actions(
         new_shake.y = move_ud.value;
     }
     if new_shake.length() > 0.0 {
-        commands.insert_resource(Shake(new_shake * time.delta_secs()));
+        commands.insert_resource(ShakeRequest(new_shake * time.delta_secs()));
+
+        if shake_q.single().is_err() {
+            // Start sound.
+            commands.spawn((
+                UiSfx,
+                ShakingSound,
+                SamplePlayer::new(fx.sloshing.clone()),
+            ));
+        }
+        shake_time.0 += time.delta();
+    } else {
+        // Remove sound after enough non-shaking.
+        if !shake_time.0.is_zero() {
+            shake_time.0 = shake_time.0.saturating_sub(time.delta());
+            if shake_time.0.is_zero() {
+                if let Ok(ent) = shake_q.single() {
+                    commands.entity(ent).try_despawn();
+                }
+            }
+        }
     }
 }
 
 fn shake_base(
     base: Res<Base>,
-    shake: Option<Res<Shake>>,
+    shake: Option<Res<ShakeRequest>>,
     camera: Query<&GlobalTransform, With<Camera3d>>,
     fx: Res<FxAssets>,
     mut commands: Commands,
@@ -333,12 +361,8 @@ fn shake_base(
             if let Ok(xfrm) = camera.single() {
                 let force = shake.0 * 10000.0;
                 forces.apply_local_linear_impulse(xfrm.rotation() * force);
-                commands.remove_resource::<Shake>();
+                commands.remove_resource::<ShakeRequest>();
 
-                if !*shaking {
-                    *shaking = true;
-                    commands.spawn((UiSfx, SamplePlayer::new(fx.shake.clone())));
-                }
             }
         } else {
             // Come to rest.
