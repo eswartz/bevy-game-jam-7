@@ -6,7 +6,6 @@ use bevy::prelude::*;
 use avian3d::prelude::*;
 
 use bevy::core_pipeline::Skybox;
-use bevy_asset_loader::asset_collection::AssetCollection;
 use image::imageops::FilterType;
 
 use super::lifecycle::PauseState;
@@ -29,6 +28,7 @@ impl Plugin for WorldStatePlugin {
             .register_type::<NextLevelIndex>()
             // .register_type::<DecorateGltfMeshes>()
             .insert_resource(Gravity((9.8 * Vec3::NEG_Y).into()))
+            .init_resource::<SkyboxCache>()
             // .add_loading_state(
             //     LoadingState::new(GameplayState::AssetsLoading)
             //         .continue_to_state(GameplayState::AssetsLoaded)
@@ -198,56 +198,15 @@ fn transition_from_loading(
     commands.set_state(GameplayState::Setup);
 }
 
-#[derive(Resource, AssetCollection)]
-pub struct SkyboxAssets {
+#[derive(Resource, Default, Reflect)]
+#[reflect(Resource, Default)]
+#[type_path = "game"]
+pub struct SkyboxCache {
     /// Cache of width (narrow dimension) to cubemapped image.
     mapped_skyboxes: HashMap<(Handle<Image>, u32), Handle<Image>>,
-
-    // #[asset(path = "textures/kloppenheim_06_puresky_4k.exr")]
-    // #[allow(unused)]
-    // pub kloppenheim_sky_map: Handle<Image>,
-
-    // #[asset(path = "textures/starmap_2020_4k.exr")]
-    // #[allow(unused)]
-    // pub star_map: Handle<Image>,
-
-    // #[asset(path = "textures/driving_school_4k.exr")]
-    // #[allow(unused)]
-    // pub driving_school: Handle<Image>,
-
-    #[asset(path = "textures/farm_field_puresky_4k.exr")]
-    #[allow(unused)]
-    pub pure_sky: Handle<Image>,
-
-    // #[asset(path = "textures/graffiti_shelter_4k.ktx2")]
-    // #[allow(unused)]
-    // pub graffiti_reflection: Handle<Image>,
-
-    // #[asset(path = "textures/farm_field_4k.exr")]
-    // #[allow(unused)]
-    // pub farm_field: Handle<Image>,
-
-    // #[asset(path = "textures/zwinger_night_4k.exr")]
-    // #[allow(unused)]
-    // pub zwinger: Handle<Image>,
-
 }
 
-
-impl SkyboxAssets {
-    #[allow(unused)]
-    pub const STAR_MAP_TRANSFORM : SkyboxTransform = SkyboxTransform::From1_0_2f_3f_4_5;
-    #[allow(unused)]
-    pub const DRIVING_SCHOOL_TRANSFORM : SkyboxTransform = SkyboxTransform::From1_0_2f_3f_4_5;
-    #[allow(unused)]
-    pub const PURE_SKY_TRANSFORM : SkyboxTransform = SkyboxTransform::From1_0_2f_3f_4_5;
-    #[allow(unused)]
-    pub const FARM_FIELD_TRANSFORM : SkyboxTransform = SkyboxTransform::From1_0_2f_3f_4_5;
-    #[allow(unused)]
-    pub const ZWINGER_TRANSFORM : SkyboxTransform = SkyboxTransform::From1_0_2f_3f_4_5;
-    #[allow(unused)]
-    pub const GRAFFITI_SHELTER_TRANSFORM : SkyboxTransform = SkyboxTransform::From1_0_2f_3f_4_5;
-
+impl SkyboxCache {
     pub fn get_openexr_skybox(&mut self, images: &mut Assets<Image>, source_image: Handle<Image>, quality: TextureQuality, transform: SkyboxTransform)
     -> Handle<Image> {
         let side_res = match quality {
@@ -308,7 +267,7 @@ pub(crate) fn check_load_skybox(
     mut commands: Commands,
     video_settings: Res<VideoSettings>,
     mut images: ResMut<Assets<Image>>,
-    mut skyboxes: ResMut<SkyboxAssets>,
+    mut skyboxes: ResMut<SkyboxCache>,
     mut setup: ResMut<WorldSetup>,
 ) {
     // use bevy::render::render_resource::*;
@@ -327,8 +286,6 @@ pub(crate) fn check_load_skybox(
     }
 
     let quality = video_settings.texture_quality;
-    // let (skybox, transform) = (skyboxes.pure_sky.clone(), SkyboxAssets::PURE_SKY_TRANSFORM);
-    // let (skybox, transform) = (skyboxes.farm_field.clone(), SkyboxAssets::FARM_FIELD_TRANSFORM);
     let skybox_image = skyboxes.get_openexr_skybox(&mut images, skybox.image.clone(), quality, *xfrm);
 
     if skybox_image == Handle::default() {

@@ -1,4 +1,5 @@
 
+use bevy::camera::Exposure;
 use bevy::camera::ScreenSpaceTransmissionQuality;
 use bevy::prelude::*;
 
@@ -14,6 +15,10 @@ use bevy::render::view::ColorGrading;
 use bevy::render::view::ColorGradingGlobal;
 use bevy::render::view::ColorGradingSection;
 
+use crate::assets::SkyboxAssets;
+use crate::common::SkyboxCache;
+use crate::common::SkyboxTransform;
+
 use super::states_sets::GameplayState;
 use super::states_sets::ProgramState;
 use super::video::Antialiasing;
@@ -21,7 +26,6 @@ use super::video::GlassQuality;
 use super::video::VideoCameraSettingsChanged;
 use super::video::VideoEffectSettingsChanged;
 use super::video::VideoSettings;
-use super::world_state::SkyboxAssets;
 use super::world_state::SkyboxModel;
 
 pub struct WorldUiPlugin;
@@ -93,12 +97,19 @@ pub fn apply_effect_settings(
     ent_commands.insert((
         // Tonemapping::BlenderFilmic,
         Tonemapping::TonyMcMapface,
-        // Kinda ugly and contrasty
+        // Bloom {
+        //     intensity: -1.0,
+        //     low_frequency_boost: 1.0,
+        //     low_frequency_boost_curvature: 0.0,
+        //     high_pass_frequency: 1.0,
+        //     ..default()
+        // },
         Bloom {
-            intensity: -1.0,
-            low_frequency_boost: 1.0,
-            low_frequency_boost_curvature: 0.0,
+            intensity: -2.0,
+            low_frequency_boost: 2.0,
+            low_frequency_boost_curvature: 0.25,
             high_pass_frequency: 1.0,
+            scale: Vec2::new(0.5, 1.0),
             ..default()
         },
         // Bloom::NATURAL,
@@ -174,16 +185,13 @@ pub fn apply_effect_settings(
 pub(crate) fn init_sandbox_skybox(
     mut commands: Commands,
     cam_q: Query<Entity, With<Camera3d>>,
-    // parent_q: Query<&ChildOf>,
     skyboxes: Res<SkyboxAssets>,
-    // state: Res<GuiState>,
-    // assets: Res<AssetServer>,
 ) {
     if let Ok(cam) = cam_q.single() {
-        // let (brightness, skybox, transform) = (100.0, skyboxes.star_map.clone(), SkyboxAssets::STAR_MAP_TRANSFORM);
-        // let (brightness, skybox, transform) = (500.0, skyboxes.driving_school.clone(), SkyboxAssets::DRIVING_SCHOOL_TRANSFORM);
-        // let (brightness, skybox, transform) = (lux::CLEAR_SUNRISE, skyboxes.kloppenheim_sky_map.clone(), SkyboxAssets::PURE_SKY_TRANSFORM);
-        let (brightness, skybox, transform) = (lux::CLEAR_SUNRISE, skyboxes.pure_sky.clone(), SkyboxAssets::PURE_SKY_TRANSFORM);
+        let (brightness, skybox) = (100.0, skyboxes.star_map.clone());
+        // let (brightness, skybox, transform) = (500.0, skyboxes.driving_school.clone());
+        // let (brightness, skybox, transform) = (lux::CLEAR_SUNRISE, skyboxes.kloppenheim_sky_map.clone());
+        // let (brightness, skybox, transform) = (lux::CLEAR_SUNRISE, skyboxes.pure_sky.clone());
         // let add_reflection_probe = Some(commands.spawn_empty().id());
         let with_reflection_probe = Some((cam, 100.0));
         // let with_reflection_probe = None;
@@ -193,12 +201,9 @@ pub(crate) fn init_sandbox_skybox(
                 brightness,
                 ..default()
             },
-            xfrm: transform,
+            xfrm: SkyboxTransform::From1_0_2f_3f_4_5,
             with_reflection_probe,
             enabled: true, //state.show_skybox,
         });
-        // commands.entity(cam).insert(LoadReflectionProbe(
-        //     // assets.load("textures/graffiti_shelter_4k.ktx2"),
-        // ));
     }
 }
