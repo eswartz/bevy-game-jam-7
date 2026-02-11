@@ -95,13 +95,13 @@ pub(crate) fn update_egui_inspector_ui(
                 ui.checkbox(&mut show_flat, "Show Flat");
                 const FILTER_ID: &str = "my_world_entities_filter";
                 if *show_flat == false {
-                    // let filter: Filter<Without<Observer>> =
-                    //     Filter::from_ui_fuzzy(ui, egui::Id::new(FILTER_ID));
+                    let filter: Filter<Without<Observer>> =
+                        Filter::from_ui_fuzzy(ui, egui::Id::new(FILTER_ID));
                     egui::CollapsingHeader::new("Entities")
                         .default_open(false)
                         .show(ui, |ui| {
-                            // ui_for_entities_filtered(world, ui, false, &filter);
-                            ui_for_entities(world, ui);
+                            ui_for_entities_filtered(world, ui, false, &filter);
+                            // ui_for_entities(world, ui);
                         });
                 } else {
                     let filter: Filter<(Without<Observer>, Without<ChildOf>)> =
