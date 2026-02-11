@@ -256,7 +256,7 @@ fn main() -> AppExit {
                 // move_camera_around,
                 // aim_camera_around,
             )
-            .run_if(not(is_paused))
+            .run_if(not(is_user_paused))
             .run_if(in_state(ProgramState::InGame))
         )
         .add_systems(
