@@ -194,7 +194,6 @@ fn main() -> AppExit {
                 LoadingState::new(GameplayState::AssetsLoading)
                     .continue_to_state(GameplayState::AssetsLoaded)
                     .load_collection::<SkyboxAssets>()
-                    // .load_collection::<IconAssets>()
                     .load_collection::<MapAssets>()
             )
 
@@ -251,17 +250,21 @@ fn main() -> AppExit {
         )
         .add_systems(
             Update,
-            (check_ball_death,
-            // move_camera_around,
-            // aim_camera_around,
-            ).run_if(in_state(LevelState::Playing)),
+            (
+                check_ball_death,
+                check_ball_collisions,
+                // move_camera_around,
+                // aim_camera_around,
+            )
+            .run_if(not(is_paused))
+            .run_if(in_state(ProgramState::InGame))
         )
         .add_systems(
             Update,
             (shake_base, check_actions)
-                .run_if(not(is_menu_paused))
+                .run_if(not(is_paused))
                 .run_if(not(egui_wants_any_keyboard_input))
-                .run_if(in_state(LevelState::Playing))
+                .run_if(in_state(ProgramState::InGame))
             ,
         )
         .add_systems(
@@ -314,8 +317,8 @@ fn configure_3d_camera(mut ent_commands: EntityCommands, use_clustered: bool) {
             fov: 75f32.to_radians(),
             ..default()
         }),
-        // OrderIndependentTransparencySettings::default(),
-        // Msaa::Off,
+        OrderIndependentTransparencySettings::default(),
+        Msaa::Off,
 
         DespawnOnExit(GameplayState::Playing),
         PlayerCamera(CameraMode::FirstPerson),
@@ -685,6 +688,78 @@ fn check_ball_death(
         }
     }
 }
+
+
+fn check_ball_collisions(
+    mut commands: Commands,
+    coll_q: Query<(Entity, &Transform, &LinearVelocity), With<Collider>>,
+    collisions: Collisions,
+    spawned_q: Query<&Spawned>,
+    scene_q: Query<&SceneRoot>,
+    parent_q: Query<&ChildOf>,
+    listener_q: Query<&Transform, With<SpatialListener3D>>,
+    fx: Res<FxAssets>,
+) {
+    let mut xfrms = vec![];
+
+    for (ent, xfrm, vel) in coll_q.iter() {
+        if vel.length() < 1.0 {
+            continue
+        }
+
+        if let Some(pair) = collisions.collisions_with(ent).next() {
+            if pair.total_normal_impulse_magnitude() > 10.0 {
+                for parent in parent_q.iter_ancestors(ent) {
+                    if spawned_q.contains(parent) {
+                        xfrms.push(xfrm.translation);
+                        if xfrms.len() >= 3 {
+                            break;
+                        }
+                    }
+                    if scene_q.contains(parent) {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    if xfrms.is_empty() {
+        return
+    }
+
+    // Fetch the spatializer location to avoid miscalculation.
+    // To avoid https://github.com/CorvusPrudens/bevy_seedling/issues/87
+    let spat_xfrm_opt = listener_q.iter().next();
+
+    let mut rng = rand::rng();
+    for position in xfrms {
+        commands.spawn((
+            Sfx,
+            Transform::from_translation(position),
+            SamplePlayer::new((*[
+                &fx.snap_1, &fx.snap_2, &fx.snap_3,
+                ].choose(&mut rng).unwrap()).clone()),
+
+            PlaybackSettings {
+                speed: rng.random_range(0.75 .. 1.25),
+                ..default()
+            },
+            VolumeNode::from_linear(rng.random_range(0.1 .. 0.25)),
+
+            sample_effects![SpatialBasicNode {
+                offset: (if let Some(spat_xfrm) = spat_xfrm_opt {
+                    spat_xfrm.translation - position
+                } else {
+                     Vec3::new(10.0, 10.0, 10.0)
+                })
+                .into(),
+                ..default()
+            }],
+        ));
+    }
+}
+
 
 fn move_camera_around(
     time: Res<Time<Physics>>,

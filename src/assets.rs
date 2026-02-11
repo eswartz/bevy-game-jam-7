@@ -29,6 +29,12 @@ pub struct FxAssets {
     pub click: Handle<AudioSample>,
     #[asset(path = "sounds/clip-1-611277__xkeril__footsteps-on-snow-clean.ogg")]
     pub shake: Handle<AudioSample>,
+    #[asset(path = "sounds/clip-1-459583__vintage2005__snap-buttons.ogg")]
+    pub snap_1: Handle<AudioSample>,
+    #[asset(path = "sounds/clip-2-459583__vintage2005__snap-buttons.ogg")]
+    pub snap_2: Handle<AudioSample>,
+    #[asset(path = "sounds/clip-3-459583__vintage2005__snap-buttons.ogg")]
+    pub snap_3: Handle<AudioSample>,
 }
 
 
