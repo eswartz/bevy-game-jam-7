@@ -4,6 +4,7 @@ mod assets;
 mod audio;
 mod player_spawning;
 mod game;
+mod level0;
 mod actions;
 
 use crate::assets::*;
@@ -146,8 +147,6 @@ fn main() -> AppExit {
         .add_plugins(PlayerMovementPlugin)
         .add_plugins(PlayerControllerPlugin)
 
-        .add_plugins(GamePlugin)
-
         .insert_resource(OurUser(default()))
 
         .insert_resource(PlayerInputSettings::for_space())
@@ -176,7 +175,8 @@ fn main() -> AppExit {
         )
         .add_systems(
             OnEnter(ProgramState::InGame),
-            (on_exit_launch_menu, on_enter_in_game).chain(),
+            (on_exit_launch_menu.run_if(is_in_menu),
+                on_enter_in_game).chain(),
         )
         .add_systems(
             OnEnter(ProgramState::InGame),
@@ -193,6 +193,10 @@ fn main() -> AppExit {
         .init_state::<LevelState>()
         .insert_resource(ProductName(PRODUCT_NAME.to_string()))
         .insert_resource(PauseState::new(false))
+
+        /////
+        .add_plugins(GamePlugin)
+
         .run();
 
     exit
@@ -299,10 +303,8 @@ fn on_enter_launch_menu(mut commands: Commands) {
     commands.set_state(OverlayState::MainMenu);
 }
 
-fn on_exit_launch_menu(state: Res<State<OverlayState>>, mut commands: Commands) {
-    if state.get().is_menu() {
-        commands.set_state(OverlayState::Hidden);
-    }
+fn on_exit_launch_menu(mut commands: Commands) {
+    commands.set_state(OverlayState::Hidden);
 }
 
 fn on_enter_in_game(mut time: ResMut<Time<Physics>>) {

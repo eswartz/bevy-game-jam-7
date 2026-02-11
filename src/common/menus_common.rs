@@ -26,6 +26,8 @@ use bevy::ui::RelativeCursorPosition;
 use bevy::window::PrimaryWindow;
 use rustc_hash::FxBuildHasher;
 
+use crate::common::is_in_menu;
+
 use super::states_sets::OverlayState;
 use super::states_sets::ProgramState;
 
@@ -69,7 +71,7 @@ impl Plugin for MenuCommonPlugin {
                     handle_menu_slider_actions,
                     handle_menu_slider_refresh,
                 )
-                .run_if(|state: Res<State<OverlayState>>| state.is_menu())
+                .run_if(is_in_menu)
             )
             .add_systems(
                 Update,

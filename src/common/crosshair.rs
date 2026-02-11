@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 use crate::common::GuiAssets;
 use crate::common::OurCamera;
+use crate::common::is_in_menu;
 
 use super::states_sets::OverlayState;
 use super::states_sets::ProgramState;
@@ -104,7 +105,7 @@ fn check_crosshair_visibility(
     mut vis_q: Query<&mut Visibility>,
     overlay: Res<State<OverlayState>>,
 ) {
-    let visible = !overlay.is_menu();
+    let visible = !is_in_menu(overlay);
     if let Ok(mut vis) = vis_q.get_mut(*crosshair_q) {
         *vis = if visible { Visibility::Inherited } else { Visibility::Hidden };
     }

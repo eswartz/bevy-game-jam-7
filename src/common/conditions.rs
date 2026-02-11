@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::common::OverlayState;
 use crate::common::PauseState;
 use crate::common::ProgramState;
 
@@ -18,4 +19,8 @@ pub fn is_menu_paused(paused: Res<PauseState>) -> bool {
 
 pub fn is_game_active(program_state: Res<State<ProgramState>>) -> bool {
     *program_state.get() == ProgramState::InGame
+}
+
+pub fn is_in_menu(overlay: Res<State<OverlayState>>) -> bool {
+    overlay.is_menu()
 }
