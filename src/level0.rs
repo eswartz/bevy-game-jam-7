@@ -5,6 +5,7 @@ use crate::game::{Base, Generator, LevelInfo, LevelList, Spawned, is_in_level};
 use crate::common::*;
 
 use bevy::audio::PlaybackSettings;
+use bevy::camera::visibility::RenderLayers;
 use bevy_seedling::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 use rand::RngExt;
@@ -33,8 +34,9 @@ impl Plugin for Level0Plugin {
             .add_systems(
                 Update,
                 (
+                    check_ball_catch,
                     check_ball_death,
-                    check_ball_collisions,
+                    // check_ball_collisions,
                 )
                 .run_if(is_in_level(ID))
                 .run_if(not(is_user_paused))
@@ -42,7 +44,9 @@ impl Plugin for Level0Plugin {
             )
             .add_systems(
                 FixedUpdate,
-                (shake_base, check_actions,
+                (
+                    shake_base,
+                    check_actions,
                     spawn_ball,
                 )
                 .run_if(is_in_level(ID))
@@ -89,7 +93,26 @@ fn on_assets_loaded(mut list: ResMut<LevelList>, maps: Res<MapAssets>) {
     });
 }
 
-fn on_level_loaded(mut commands: Commands) {
+/// Marker (in .glb) for the collider.
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+#[type_path = "game"]
+pub(crate) struct NetCollider;
+
+fn on_level_loaded(
+    mut commands: Commands,
+    models: Res<ModelAssets>,
+    camera_q: Single<Entity, (With<Camera3d>, With<ViewerCamera>)>,
+) {
+    let net = commands.spawn((
+        Name::new("Net"),
+        RenderLayers::layer(RENDER_LAYER_VIEW),
+        SceneRoot(models.net.clone()),
+        Transform::from_xyz(0.0, 0.0, -1.0).with_scale(Vec3::splat(2.0)),
+        Visibility::Visible,
+    )).id();
+    commands.entity(*camera_q).add_child(net);
+
     commands.insert_resource(Spawning(false));
     commands.insert_resource(SpawnDelay(Duration::from_secs(1)));
     commands.insert_resource(ShakeRequest(Vec3::ZERO));
@@ -282,73 +305,154 @@ fn check_ball_death(
     }
 }
 
-fn check_ball_collisions(
+// fn check_ball_collisions(
+//     mut commands: Commands,
+//     coll_q: Query<(Entity, &Transform, &LinearVelocity), With<Collider>>,
+//     collisions: Collisions,
+//     spawned_q: Query<&Spawned>,
+//     scene_q: Query<&SceneRoot>,
+//     parent_q: Query<&ChildOf>,
+//     listener_q: Query<&Transform, With<SpatialListener3D>>,
+//     fx: Res<FxAssets>,
+// ) {
+//     let mut xfrms = vec![];
+
+//     for (ent, xfrm, vel) in coll_q.iter() {
+//         if vel.length() < 1.0 {
+//             continue;
+//         }
+
+//         if let Some(pair) = collisions.collisions_with(ent).next() {
+//             if pair.total_normal_impulse_magnitude() > 10.0 {
+//                 for parent in parent_q.iter_ancestors(ent) {
+//                     if spawned_q.contains(parent) {
+//                         xfrms.push(xfrm.translation);
+//                         if xfrms.len() >= 3 {
+//                             break;
+//                         }
+//                     }
+//                     if scene_q.contains(parent) {
+//                         break;
+//                     }
+//                 }
+//             }
+//         }
+//     }
+
+//     if xfrms.is_empty() {
+//         return;
+//     }
+
+//     // Fetch the spatializer location to avoid miscalculation.
+//     // To avoid https://github.com/CorvusPrudens/bevy_seedling/issues/87
+//     let spat_xfrm_opt = listener_q.iter().next();
+
+//     let mut rng = rand::rng();
+//     for position in xfrms {
+//         commands.spawn((
+//             Sfx,
+//             Transform::from_translation(position),
+//             SamplePlayer::new(
+//                 (*[&fx.snap_1, &fx.snap_2, &fx.snap_3]
+//                     .choose(&mut rng)
+//                     .unwrap())
+//                 .clone(),
+//             ),
+//             PlaybackSettings {
+//                 speed: rng.random_range(0.75..1.25),
+//                 ..default()
+//             },
+//             VolumeNode::from_linear(rng.random_range(0.1..0.25)),
+//             sample_effects![SpatialBasicNode {
+//                 offset: (if let Some(spat_xfrm) = spat_xfrm_opt {
+//                     spat_xfrm.translation - position
+//                 } else {
+//                     Vec3::new(10.0, 10.0, 10.0)
+//                 })
+//                 .into(),
+//                 ..default()
+//             }],
+//         ));
+//     }
+// }
+
+fn check_ball_catch(
+    mut reader: MessageReader<CollisionEnd>,
     mut commands: Commands,
-    coll_q: Query<(Entity, &Transform, &LinearVelocity), With<Collider>>,
-    collisions: Collisions,
-    spawned_q: Query<&Spawned>,
+    coll_q: Single<Entity, With<NetCollider>>,
+    spawned_q: Query<(Entity, &Transform), With<Spawned>>, // toplevel
     scene_q: Query<&SceneRoot>,
     parent_q: Query<&ChildOf>,
     listener_q: Query<&Transform, With<SpatialListener3D>>,
+    shrink_q: Query<&ShrinkAndDisappear>,
     fx: Res<FxAssets>,
 ) {
-    let mut xfrms = vec![];
-
-    for (ent, xfrm, vel) in coll_q.iter() {
-        if vel.length() < 1.0 {
-            continue;
-        }
-
-        if let Some(pair) = collisions.collisions_with(ent).next() {
-            if pair.total_normal_impulse_magnitude() > 10.0 {
-                for parent in parent_q.iter_ancestors(ent) {
-                    if spawned_q.contains(parent) {
-                        xfrms.push(xfrm.translation);
-                        if xfrms.len() >= 3 {
-                            break;
-                        }
-                    }
-                    if scene_q.contains(parent) {
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    if xfrms.is_empty() {
-        return;
-    }
-
     // Fetch the spatializer location to avoid miscalculation.
     // To avoid https://github.com/CorvusPrudens/bevy_seedling/issues/87
     let spat_xfrm_opt = listener_q.iter().next();
-
     let mut rng = rand::rng();
-    for position in xfrms {
-        commands.spawn((
-            Sfx,
-            Transform::from_translation(position),
-            SamplePlayer::new(
-                (*[&fx.snap_1, &fx.snap_2, &fx.snap_3]
-                    .choose(&mut rng)
-                    .unwrap())
-                .clone(),
-            ),
-            PlaybackSettings {
-                speed: rng.random_range(0.75..1.25),
-                ..default()
-            },
-            VolumeNode::from_linear(rng.random_range(0.1..0.25)),
-            sample_effects![SpatialBasicNode {
-                offset: (if let Some(spat_xfrm) = spat_xfrm_opt {
-                    spat_xfrm.translation - position
-                } else {
-                    Vec3::new(10.0, 10.0, 10.0)
-                })
-                .into(),
-                ..default()
-            }],
-        ));
+
+    let net = *coll_q;
+
+    for event in reader.read() {
+        if event.collider1 == net || event.collider2 == net {
+            // Caught something...
+            let not_net = if event.collider1 == net { event.collider2 } else { event.collider1 };
+            if shrink_q.contains(not_net) {
+                // Already handled.
+                continue;
+            }
+
+            let mut ball_xfrm = None;
+            for parent in parent_q.iter_ancestors(not_net) {
+                if let Ok((_ent, xfrm)) = spawned_q.get(parent) {
+                    ball_xfrm = Some(xfrm);
+                    break;
+                }
+                if scene_q.contains(parent) {
+                    break;
+                }
+            }
+
+            if let Some(xfrm) = ball_xfrm {
+                // commands.entity(not_net).try_despawn();
+                commands.entity(not_net).try_insert((
+                    RigidBody::Static,
+                    ShrinkAndDisappear,
+                ));
+
+                commands.spawn((
+                    Sfx,
+                    Transform::from_translation(xfrm.translation),
+                    SamplePlayer::new(
+                        (*[
+                            // &fx.action,
+                            // &fx.action_rev,
+                            &fx.swish,
+                            // &fx.snap_2, &fx.snap_3
+                            ]
+                            .choose(&mut rng)
+                            .unwrap())
+                        .clone(),
+                    ),
+
+                    PlaybackSettings {
+                        speed: rng.random_range(0.75..1.25),
+                        ..default()
+                    },
+                    VolumeNode::from_linear(rng.random_range(0.5..1.0)),
+
+                    sample_effects![SpatialBasicNode {
+                        offset: (if let Some(spat_xfrm) = spat_xfrm_opt {
+                            spat_xfrm.translation - xfrm.translation
+                        } else {
+                            Vec3::new(10.0, 10.0, 10.0)
+                        })
+                        .into(),
+                        ..default()
+                    }],
+                ));
+            }
+        }
     }
 }

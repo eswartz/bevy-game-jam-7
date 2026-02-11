@@ -1,22 +1,12 @@
-use std::time::Duration;
-
 use crate::{assets::*, level0};
 use crate::player_spawning::spawn_player;
 use crate::common::*;
 
 use bevy::asset::uuid::Uuid;
-use bevy::audio::PlaybackSettings;
-use bevy::camera::Exposure;
-use bevy::camera::visibility::RenderLayers;
 use bevy::ecs::world::CommandQueue;
-use bevy::render::view::Hdr;
 use bevy_asset_loader::loading_state::LoadingStateAppExt as _;
 use bevy_asset_loader::loading_state::config::{ConfigureLoadingState as _, LoadingStateConfig};
 use bevy_seedling::prelude::*;
-use leafwing_input_manager::prelude::ActionState;
-use rand::RngExt;
-use rand::seq::IndexedRandom;
-
 
 use avian3d::prelude::*;
 use bevy::prelude::*;
@@ -24,7 +14,6 @@ use bevy::{
     gltf::GltfMeshName,
     scene::SceneInstanceReady,
 };
-use bevy_egui::input::egui_wants_any_keyboard_input;
 
 pub struct GamePlugin;
 
@@ -172,12 +161,19 @@ fn observe_spawn_mesh(
 
 pub(crate) fn spawn_player_on_start(world: &mut World) {
     // Make the player collision model and Player
-    let ent = spawn_player(world, Uuid::default());
+    let player_ent = spawn_player(world, Uuid::default());
+
+    // let mut camera_q = world.query_filtered::<Entity, (With<Camera3d>, With<ViewerCamera>)>();
+    // let Ok(cam_ent) = camera_q.single(world) else {
+    //     log::error!("no single PlayerStart or OurPlayer");
+    //     return;
+    // };
+    // drop(camera_q);
 
     // Move to start position/orientation.
     let mut start_q = world.query_filtered::<&Transform, (With<PlayerStart>, Without<OurPlayer>)>();
     let Ok(xfrm) = start_q.single(world) else {
-        log::error!("no PlayerStart or OurPlayer");
+        log::error!("no single PlayerStart or OurPlayer");
         return;
     };
     drop(start_q);
@@ -187,10 +183,14 @@ pub(crate) fn spawn_player_on_start(world: &mut World) {
     let mut commands = Commands::new(&mut queue, world);
 
     // Put and orient the new Player where the PlayerStart is.
-    commands.entity(ent).insert((
+    commands.entity(player_ent).insert((
         PlayerLook { rotation: xfrm.rotation, .. default() },
         xfrm
     ));
+
+    // // Move view camera inside player.
+    // commands.entity(cam_ent).insert(ChildOf(player_ent));
+
 
     queue.apply(world);
 }

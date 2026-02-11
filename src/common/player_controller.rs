@@ -119,6 +119,7 @@ fn collect_player_movement(
 
     cam_q.adjust_bob_roll_pitch(
         &cam_settings,
+        input_settings.mode,
         time.delta_secs(),
         instant_thrust.z,
         instant_thrust.x,

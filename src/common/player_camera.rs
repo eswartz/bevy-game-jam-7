@@ -1,5 +1,6 @@
 // Client-side camera behavior.
 
+use avian3d::math::Quaternion;
 use avian3d::prelude::*;
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
@@ -15,10 +16,11 @@ impl Plugin for PlayerCameraPlugin {
             .register_type::<OurCamera>()
             .register_type::<PlayerCameraSettings>()
             .init_resource::<PlayerCameraSettings>()
+            .insert_resource(ViewerCameraAlignRate(0.125))
             .add_systems(FixedPreUpdate,
                 (
                     handle_player_camera_actions,
-                    sync_camera_to_player
+                    sync_cameras_to_player
                 )
                 .chain()
                 .after(PhysicsSystems::Writeback)
@@ -82,6 +84,12 @@ impl Default for PlayerCameraSettings {
     }
 }
 
+/// How quickly we align the ViewerCamera to the WorldCamera.
+#[derive(Resource, Default, Reflect)]
+#[reflect(Default)]
+#[type_path = "game"]
+pub struct ViewerCameraAlignRate(pub f32);
+
 /// This marks the Camera representing the player's point of view.
 #[derive(Component, Default, Reflect)]
 #[require(Saveable)]
@@ -104,7 +112,12 @@ pub struct OurCamera {
 
 impl OurCamera {
 
-    pub fn adjust_bob_roll_pitch(&mut self, settings: &PlayerCameraSettings, dt: f32, fwd: f32, strafe: f32, speed: f32) {
+    pub fn adjust_bob_roll_pitch(
+        &mut self,
+        settings: &PlayerCameraSettings,
+        mode: PlayerMode,
+        dt: f32, fwd: f32, strafe: f32, speed: f32
+    ) {
 
         let sign_or_zero = |v: f32| -> f32 {
             if v.abs() < 0.0001 { 0.0 } else { v.signum() }
@@ -167,33 +180,40 @@ impl OurCamera {
             self.pitch_x_ang = 0.;
         }
 
-        // let movement = Vec2::new(fwd, strafe).length() * speed.mul();
-        if sign_or_zero(self.bob_movement) != sign_or_zero(speed) {
-            self.bob_timer = 0.;
-            self.bob_movement = speed;
-        }
-
-        if speed >= 0.25 {
-            let bob_max = speed * settings.bob_distance.abs();
-            self.bob_distance = ops::sin(self.bob_timer * std::f32::consts::TAU / settings.bob_time) * bob_max;
-            self.bob_timer += dt;
-        } else {
-            self.bob_distance *= 0.5;
-            if self.bob_distance.abs() < 0.0001 {
-                self.bob_distance = 0.;
+        if mode == PlayerMode::Fps {
+            // let movement = Vec2::new(fwd, strafe).length() * speed.mul();
+            if sign_or_zero(self.bob_movement) != sign_or_zero(speed) {
+                self.bob_timer = 0.;
+                self.bob_movement = speed;
             }
+
+            if speed >= 0.25 {
+                let bob_max = speed * settings.bob_distance.abs();
+                self.bob_distance = ops::sin(self.bob_timer * std::f32::consts::TAU / settings.bob_time) * bob_max;
+                self.bob_timer += dt;
+            } else {
+                self.bob_distance *= 0.5;
+                if self.bob_distance.abs() < 0.0001 {
+                    self.bob_distance = 0.;
+                }
+            }
+        } else {
+            self.bob_timer = 0.;
+            self.bob_movement = 0.;
+            self.bob_distance = 0.;
         }
     }
 }
 
-
-pub(crate) fn sync_camera_to_player(
+pub(crate) fn sync_cameras_to_player(
     mut player_q: Single<(&Transform, &PlayerLook, &ColliderAabb, &mut Visibility), (With<OurPlayer>, Without<Camera3d>)>,
-    mut camera_q: Single<(&PlayerCamera, &mut Transform, &OurCamera), (With<Camera3d>, With<WorldCamera>)>,
+    mut world_camera_q: Single<(&PlayerCamera, &mut Transform, &OurCamera), (With<Camera3d>, With<WorldCamera>, Without<ViewerCamera>)>,
+    mut view_camera_q: Single<&mut Transform, (With<Camera3d>, With<ViewerCamera>, Without<WorldCamera>)>,
+    align_rate: Res<ViewerCameraAlignRate>,
     time: Res<Time>,
 ) {
     let (player_xfrm, look, player_aabb, ref mut model_visibility) = *player_q;
-    let (PlayerCamera(mode), ref mut camera_xfrm, cam) = *camera_q;
+    let (PlayerCamera(mode), ref mut camera_xfrm, cam) = *world_camera_q;
 
     // let q = (time.delta_secs() * 10.0).min(1.0);
     let q = (-0.5 * time.delta_secs() * 100.0).exp();
@@ -230,6 +250,16 @@ pub(crate) fn sync_camera_to_player(
             model_visibility.set_if_neq(Visibility::Inherited);
         }
     };
+
+    // View camera is always aligned to world camera.
+    // **view_camera_q = **camera_xfrm;
+    view_camera_q.translation = camera_xfrm.translation;
+
+    // Slowly align but don't tilt.
+    let target_rot = view_camera_q.rotation.lerp(camera_xfrm.rotation, align_rate.0);
+    let (ex, ey, _ez) = target_rot.to_euler(default());
+    let target_rot = Quaternion::from_euler(default(), ex, ey, 0.0);
+    view_camera_q.rotation = target_rot;
 }
 
 pub(crate) fn handle_player_camera_actions(

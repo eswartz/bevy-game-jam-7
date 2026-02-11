@@ -19,6 +19,7 @@ pub(crate) mod player_move_look;
 pub(crate) mod player_input;
 pub(crate) mod conditions;
 pub(crate) mod crosshair;
+pub(crate) mod effects;
 
 pub(crate) use base_dir::*;
 pub(crate) use actions_common::*;
@@ -41,3 +42,4 @@ pub(crate) use player_move_look::*;
 pub(crate) use player_input::*;
 pub(crate) use conditions::*;
 pub(crate) use crosshair::*;
+pub(crate) use effects::*;

@@ -69,7 +69,7 @@ pub(crate) fn spawn_player(world: &mut World, user_id: Uuid) -> Entity {
     //     radius as Scalar,
     // );
 
-    world.spawn((
+    let player = world.spawn((
         Name::new("Player"),
         DespawnOnExit(ProgramState::InGame),
         (
@@ -138,7 +138,9 @@ pub(crate) fn spawn_player(world: &mut World, user_id: Uuid) -> Entity {
         //     ActiveCollisionHooks::MODIFY_CONTACTS,
         // )]
     ))
-    .id()
+    .id();
+
+    player
 }
 
 pub fn default_player_collision_layers() -> CollisionLayers {

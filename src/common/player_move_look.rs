@@ -50,7 +50,7 @@ impl Plugin for PlayerMovementPlugin {
     }
 }
 
-#[derive(Resource, Debug, Clone, Default, Reflect, PartialEq)]
+#[derive(Resource, Debug, Clone, Copy, Default, Reflect, PartialEq)]
 #[reflect(Resource, Clone, Default)]
 #[type_path = "game"]
 pub enum PlayerMode {

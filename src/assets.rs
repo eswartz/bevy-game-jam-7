@@ -41,6 +41,8 @@ pub struct FxAssets {
     pub off: Handle<AudioSample>,
     #[asset(path = "sounds/recover-86228__nmscher__car_-internal_warning-ding_plymouth-acclaim_edited.ogg")]
     pub on: Handle<AudioSample>,
+    #[asset(path = "sounds/swish-178056__eneasz__folder-snapped-shut.ogg")]
+    pub swish: Handle<AudioSample>,
 }
 
 

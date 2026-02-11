@@ -140,6 +140,7 @@ fn main() -> AppExit {
         .add_plugins(DebugPlugin)
         .add_plugins(AudioPlugin)
         .add_plugins(CrosshairPlugin)
+        .add_plugins(EffectsPlugin)
 
         .add_plugins(PlayerCameraPlugin)
         .add_plugins(PlayerInputPlugin)
@@ -289,7 +290,7 @@ fn configure_viewer_camera(mut ent_commands: EntityCommands, use_clustered: bool
             Camera3d::default(),
             RenderLayers::layer(RENDER_LAYER_VIEW),
 
-            Exposure { ev100: 10.0 },
+            Exposure { ev100: 1.0 },
             Camera {
                 order: 2,
                 clear_color: ClearColorConfig::None,
@@ -297,14 +298,10 @@ fn configure_viewer_camera(mut ent_commands: EntityCommands, use_clustered: bool
             },
             Hdr,
             Projection::Perspective(PerspectiveProjection {
-                fov: 75f32.to_radians(),
+                fov: 45f32.to_radians(),
                 ..default()
             }),
-            OrderIndependentTransparencySettings::default(),
             Msaa::Off,
-
-            OurCamera::default(),
-            Transform::from_xyz(0., 1., 0.),
 
             DespawnOnExit(GameplayState::Playing),
         ),
