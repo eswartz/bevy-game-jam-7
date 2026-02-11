@@ -162,8 +162,11 @@ pub(crate) fn spawn_player_on_start(world: &mut World) {
     let mut queue = CommandQueue::default();
     let mut commands = Commands::new(&mut queue, world);
 
-    // Put the new Player where the PlayerStart is.
-    commands.entity(ent).insert(xfrm);
+    // Put and orient the new Player where the PlayerStart is.
+    commands.entity(ent).insert((
+        PlayerLook { rotation: xfrm.rotation, .. default() },
+        xfrm
+    ));
 
     queue.apply(world);
 }
