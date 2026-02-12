@@ -15,6 +15,11 @@ pub struct Saveable;
 #[type_path = "game"]
 pub struct DespawnAfter(pub Duration);
 
+/// Mark the entity as being out of play.
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+pub struct Ignored;
+
 #[derive(PhysicsLayer, Clone, Copy, Debug, Default)]
 pub enum GameLayer {
     #[default]

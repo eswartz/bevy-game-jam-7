@@ -7,6 +7,8 @@ use crate::common::*;
 use bevy::audio::PlaybackSettings;
 use bevy::camera::visibility::RenderLayers;
 use bevy_seedling::prelude::*;
+use bevy_tweening::lens::{TransformPositionLens, TransformScaleLens};
+use bevy_tweening::{AnimCompletedEvent, EaseMethod, Tween, TweenAnim, Tweenable};
 use leafwing_input_manager::prelude::ActionState;
 use rand::RngExt;
 use rand::seq::IndexedRandom;
@@ -32,12 +34,14 @@ impl Plugin for Level0Plugin {
                 on_level_loaded
             )
             .add_systems(
-                Update,
+                FixedUpdate,
                 (
                     check_ball_catch,
                     check_ball_death,
                     // check_ball_collisions,
                 )
+                .before(TransformSystems::Propagate)
+                .after(PhysicsSystems::Writeback)
                 .run_if(is_in_level(ID))
                 .run_if(not(is_user_paused))
                 .run_if(in_state(ProgramState::InGame)),
@@ -379,12 +383,13 @@ fn check_ball_death(
 fn check_ball_catch(
     mut reader: MessageReader<CollisionEnd>,
     mut commands: Commands,
-    coll_q: Single<Entity, With<NetCollider>>,
-    spawned_q: Query<(Entity, &Transform), With<Spawned>>, // toplevel
+    net_q: Single<(Entity, &GlobalTransform), With<NetCollider>>,
+    spawned_q: Query<(Entity, &Transform, &GlobalTransform), With<Spawned>>, // toplevel
     scene_q: Query<&SceneRoot>,
     parent_q: Query<&ChildOf>,
     listener_q: Query<&Transform, With<SpatialListener3D>>,
-    shrink_q: Query<&ShrinkAndDisappear>,
+    ignored_q: Query<&Ignored>,
+    camera_xfrm_q: Single<&GlobalTransform, (With<OurCamera>, With<WorldCamera>)>,
     fx: Res<FxAssets>,
 ) {
     // Fetch the spatializer location to avoid miscalculation.
@@ -392,21 +397,25 @@ fn check_ball_catch(
     let spat_xfrm_opt = listener_q.iter().next();
     let mut rng = rand::rng();
 
-    let net = *coll_q;
+    let (net, net_gxfrm) = *net_q;
 
     for event in reader.read() {
         if event.collider1 == net || event.collider2 == net {
             // Caught something...
             let not_net = if event.collider1 == net { event.collider2 } else { event.collider1 };
-            if shrink_q.contains(not_net) {
+            if ignored_q.contains(not_net) {
                 // Already handled.
                 continue;
             }
 
+            let mut ball = None;
             let mut ball_xfrm = None;
+            let mut ball_gxfrm = None;
             for parent in parent_q.iter_ancestors(not_net) {
-                if let Ok((_ent, xfrm)) = spawned_q.get(parent) {
+                if let Ok((ent, xfrm, gxfrm)) = spawned_q.get(parent) {
+                    ball = Some(ent);
                     ball_xfrm = Some(xfrm);
+                    ball_gxfrm = Some(gxfrm);
                     break;
                 }
                 if scene_q.contains(parent) {
@@ -414,16 +423,34 @@ fn check_ball_catch(
                 }
             }
 
-            if let Some(xfrm) = ball_xfrm {
-                // commands.entity(not_net).try_despawn();
-                commands.entity(not_net).try_insert((
+            if let Some(ball_gxfrm) = ball_gxfrm
+            && let Some(ball_xfrm) = ball_xfrm
+            && let Some(ball) = ball {
+                // Animate "catching" the ball.
+
+                // Leads to panics sometiems
+                // commands.entity(not_net).try_remove::<RigidBody>();
+                let xfrm_tween = Tween::new(
+                    EaseMethod::EaseFunction(EaseFunction::BackOut),
+                    Duration::from_secs_f32(1.0),
+                    TransformScaleLens {
+                        start: ball_xfrm.scale,
+                        end: Vec3::splat(0.001),
+                    }
+                );
+                commands.entity(ball).try_insert((
+                    // Make static so it won't move by physics
                     RigidBody::Static,
-                    ShrinkAndDisappear,
+                    Ignored,
+                    DespawnAfter(xfrm_tween.cycle_duration()),
+                    TweenAnim::new(xfrm_tween).with_destroy_on_completed(true),
+                    AimForCamera,
                 ));
 
                 commands.spawn((
                     Sfx,
-                    Transform::from_translation(xfrm.translation),
+                    // Transform::from_translation(ball_gxfrm.translation()),
+                    ball_gxfrm.clone(),
                     SamplePlayer::new(
                         (*[
                             // &fx.action,
@@ -444,7 +471,7 @@ fn check_ball_catch(
 
                     sample_effects![SpatialBasicNode {
                         offset: (if let Some(spat_xfrm) = spat_xfrm_opt {
-                            spat_xfrm.translation - xfrm.translation
+                            spat_xfrm.translation - ball_gxfrm.translation()
                         } else {
                             Vec3::new(10.0, 10.0, 10.0)
                         })
