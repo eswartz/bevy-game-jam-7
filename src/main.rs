@@ -3,9 +3,10 @@ mod menus;
 mod assets;
 mod audio;
 mod player_spawning;
-mod game;
-mod level0;
 mod actions;
+mod game;
+mod logic;
+mod level_0;
 
 use crate::assets::*;
 use crate::audio::AudioPlugin;

@@ -1,4 +1,7 @@
-use crate::{assets::*, level0};
+use std::time::Duration;
+
+use crate::logic::LogicPlugin;
+use crate::{assets::*, level_0};
 use crate::player_spawning::spawn_player;
 use crate::common::*;
 
@@ -20,11 +23,13 @@ pub struct GamePlugin;
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         app
+            .add_plugins(LogicPlugin)
+
             .insert_resource(LevelList(default()))
             .insert_resource(Base(Entity::PLACEHOLDER, Transform::IDENTITY))
             .add_observer(observe_spawn_mesh)
 
-            .add_plugins(level0::Level0Plugin)
+            .add_plugins(level_0::Level0Plugin)
 
             .configure_loading_state(
                 LoadingStateConfig::new(ProgramState::Initializing)
@@ -100,6 +105,45 @@ pub(crate) struct Spawned;
 #[reflect(Resource)]
 #[type_path = "game"]
 pub(crate) struct Base(pub Entity, pub Transform);
+
+
+
+/// Marker (in .glb) for the collider.
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+#[type_path = "game"]
+pub(crate) struct NetCollider;
+
+/// Is spawning active?
+#[derive(Resource, Reflect, Default)]
+#[reflect(Resource, Default)]
+#[type_path = "game"]
+pub(crate) struct Spawning(pub bool);
+
+/// Delay between spawns.
+#[derive(Resource, Reflect, Default)]
+#[reflect(Resource, Default)]
+#[type_path = "game"]
+pub(crate) struct SpawnDelay(pub(crate) Duration);
+
+#[derive(Resource, Reflect, Default, Deref, DerefMut)]
+#[reflect(Resource, Default)]
+#[type_path = "game"]
+pub(crate) struct SpawnTimer(pub(crate) Timer);
+
+/// Apply shaking from user action.
+#[derive(Resource)]
+pub(crate) struct ShakeRequest(pub(crate) Vec3);
+
+/// How long some kind of shaking is active.
+#[derive(Resource)]
+pub(crate) struct ShakeTime(pub(crate) Duration);
+
+/// Set while shaking sound active.
+#[derive(Component)]
+pub(crate) struct ShakingSound;
+
+
 
 fn observe_spawn_mesh(
     ready: On<SceneInstanceReady>,
