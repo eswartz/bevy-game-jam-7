@@ -13,25 +13,25 @@ impl Plugin for EffectsPlugin {
     fn build(&self, app: &mut App) {
         app
             .add_plugins(TweeningPlugin)
-            .add_systems(Update, shrink_and_disappear)
-            .add_systems(Update, aim_for_camera)
+            .add_systems(PostUpdate, shrink_and_disappear)
+            .add_systems(PostUpdate, aim_for_camera)
         ;
     }
 }
 
-/// Marker for things that should shrink and disappear.
+/// Marker for things that should shrink and disappear, at the given rate.
 #[derive(Component, Reflect, Default)]
 #[reflect(Component, Default)]
 #[type_path = "game"]
-pub(crate) struct ShrinkAndDisappear;
+pub(crate) struct ShrinkAndDisappear(pub(crate) f32);
 
 fn shrink_and_disappear(mut commands: Commands,
     time: Res<Time<Physics>>,
-    mut shrink_q: Query<(Entity, &mut Transform), With<ShrinkAndDisappear>>
+    mut shrink_q: Query<(Entity, &ShrinkAndDisappear, &mut Transform)>
 ) {
-    for (ent, mut xfrm) in shrink_q.iter_mut() {
+    for (ent, sad, mut xfrm) in shrink_q.iter_mut() {
         let cur_scale = xfrm.scale.max_element();
-        let new_scale = cur_scale - time.delta_secs() * 5.0;
+        let new_scale = cur_scale - time.delta_secs() * sad.0.max(0.1);
         if new_scale >= 0.01 {
             xfrm.scale = Vec3::splat(new_scale);
         } else {

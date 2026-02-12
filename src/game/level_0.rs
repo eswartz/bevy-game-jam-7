@@ -26,7 +26,7 @@ impl Plugin for Level0Plugin {
         app
             .add_systems(
                 OnEnter(GameplayState::AssetsLoading),
-                on_assets_loading
+                register_level
             )
             .add_systems(
                 OnEnter(LevelState::Loaded),
@@ -47,11 +47,11 @@ impl Plugin for Level0Plugin {
     }
 }
 
-fn on_assets_loading(mut list: ResMut<LevelList>, maps: Res<MapAssets>) {
+fn register_level(mut list: ResMut<LevelList>, maps: Res<MapAssets>) {
     list.0.push(LevelInfo {
         id: ID.to_string(),
         label: NAME.to_string(),
-        scene: maps.level_test.clone()
+        scene: maps.level_0.clone()
     });
 }
 
@@ -64,7 +64,7 @@ fn on_level_loaded(
         Name::new("Net"),
         RenderLayers::layer(RENDER_LAYER_VIEW),
         SceneRoot(models.net.clone()),
-        Transform::from_xyz(0.0, 0.0, -1.0).with_scale(Vec3::splat(2.0)),
+        Transform::from_xyz(0.0, 0.0, -2.0).with_scale(Vec3::splat(2.0)),
         Visibility::Visible,
     )).id();
     commands.entity(*camera_q).add_child(net);

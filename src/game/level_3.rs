@@ -26,7 +26,7 @@ impl Plugin for Level3Plugin {
         app
             .add_systems(
                 OnEnter(GameplayState::AssetsLoading),
-                on_assets_loading
+                register_level
             )
             .add_systems(
                 OnEnter(LevelState::Loaded),
@@ -47,11 +47,11 @@ impl Plugin for Level3Plugin {
     }
 }
 
-fn on_assets_loading(mut list: ResMut<LevelList>, maps: Res<MapAssets>) {
+fn register_level(mut list: ResMut<LevelList>, maps: Res<MapAssets>) {
     list.0.push(LevelInfo {
         id: ID.to_string(),
         label: NAME.to_string(),
-        scene: maps.level_test.clone()
+        scene: maps.level_3.clone()
     });
 }
 

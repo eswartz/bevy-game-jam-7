@@ -43,13 +43,17 @@ pub struct FxAssets {
     pub on: Handle<AudioSample>,
     #[asset(path = "sounds/swish-178056__eneasz__folder-snapped-shut.ogg")]
     pub swish: Handle<AudioSample>,
+    #[asset(path = "sounds/fail_612892__avajoliec__19-plain-creak.ogg")]
+    pub loss: Handle<AudioSample>,
 }
 
 
 #[derive(Resource, AssetCollection)]
 pub struct MapAssets {
-    #[asset(path = "models/test.glb#Scene0")]
-    pub level_test: Handle<Scene>,
+    #[asset(path = "maps/level_0.glb#Scene0")]
+    pub level_0: Handle<Scene>,
+    #[asset(path = "maps/level_3.glb#Scene0")]
+    pub level_3: Handle<Scene>,
 }
 
 #[derive(Resource, AssetCollection)]

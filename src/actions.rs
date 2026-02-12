@@ -89,11 +89,10 @@ pub fn default_input_map() -> InputMap<UserAction> {
         ButtonlikeChord::modified(MOD_CTRL_COMMAND, KeyCode::KeyB),
     ); // "B"ackground
 
-    // Not for this
-    // input_map.insert(
-    //     ChangeCamera,
-    //     ButtonlikeChord::modified(MOD_CTRL_COMMAND, KeyCode::KeyV),
-    // ); // "V"iew
+    input_map.insert(
+        ChangeCamera,
+        ButtonlikeChord::modified(MOD_CTRL_COMMAND, KeyCode::KeyV),
+    ); // "V"iew
 
     input_map.insert(
         SwitchNextAudioTrack,

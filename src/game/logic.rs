@@ -29,11 +29,12 @@ pub struct LogicPlugin;
 impl Plugin for LogicPlugin {
     fn build(&self, app: &mut App) {
         app
-        .add_systems(
+            .add_systems(
                 FixedUpdate,
                 (
                     check_ball_catch,
-                    check_ball_death,
+                    check_ball_consumer,
+                    check_ball_deathbox,
                 )
                 .before(TransformSystems::Propagate)
                 .after(PhysicsSystems::Writeback)
@@ -154,19 +155,80 @@ pub(crate) fn shake_base(
     }
 }
 
-pub(crate) fn check_ball_death(
+pub(crate) fn check_ball_consumer(
     mut commands: Commands,
     parent_q: Query<&ChildOf>,
-    spawned_q: Query<&Spawned>,
-    // scene_q: Query<&SceneRoot>,
-    sensor_q: Query<&CollidingEntities, With<Sensor>>,
+    spawned_q: Query<&Spawned, Without<Ignored>>,
+    scene_q: Query<&SceneRoot>,
+    sensor_q: Query<(&Transform, &CollidingEntities), (With<ConsumerCollider>, With<Sensor>)>,
+    fx: Res<FxAssets>,
+) {
+    let mut rng = rand::rng();
+    for (xfrm, coll) in sensor_q.iter() {
+        for ent in coll.iter() {
+            let mut parent = *ent;
+            loop {
+                if spawned_q.contains(parent) {
+                    commands.spawn((
+                        UiSfx,
+                        SamplePlayer::new(
+                            // (*[&fx.belch_1, &fx.belch_2, &fx.belch_3]
+                            (*[&fx.loss]
+                                .choose(&mut rng)
+                                .unwrap())
+                            .clone(),
+                        ),
+                        PlaybackSettings {
+                            speed: rng.random_range(0.9..1.1),
+                            ..default()
+                        },
+                        VolumeNode::from_linear(rng.random_range(0.85..1.0)),
+                    ));
+
+                    let xfrm_tween = Tween::new(
+                        EaseMethod::EaseFunction(EaseFunction::BackOut),
+                        Duration::from_secs_f32(1.0),
+                        TransformScaleLens {
+                            start: xfrm.scale,
+                            end: Vec3::splat(0.001),
+                        }
+                    );
+                    commands.entity(parent).try_insert((
+                        Ignored,
+                    ));
+                    commands.entity(*ent).try_insert((
+                        // Make static so it won't move by physics
+                        RigidBody::Static,
+                        DespawnAfter(xfrm_tween.cycle_duration()),
+                        TweenAnim::new(xfrm_tween).with_destroy_on_completed(true),
+                    ));
+
+                    break;
+                }
+                if scene_q.contains(parent) {
+                    break;
+                }
+                if let Ok(parent0) = parent_q.get(parent) {
+                    parent = parent0.0;
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+}
+
+pub(crate) fn check_ball_deathbox(
+    mut commands: Commands,
+    parent_q: Query<&ChildOf>,
+    spawned_q: Query<&Spawned, Without<Ignored>>,
+    sensor_q: Query<&CollidingEntities, (With<DeathboxCollider>, With<Sensor>)>,
 ) {
     for coll in sensor_q.iter() {
         for ent in coll.iter() {
             let mut parent = *ent;
             loop {
                 if spawned_q.contains(parent) {
-                    // dbg!(ent, parent);
                     commands.entity(parent).despawn();
                     break;
                 }
@@ -183,29 +245,21 @@ pub(crate) fn check_ball_death(
 pub(crate) fn check_ball_catch(
     mut reader: MessageReader<CollisionEnd>,
     mut commands: Commands,
-    net_q: Single<(Entity, &GlobalTransform), With<NetCollider>>,
-    spawned_q: Query<(Entity, &Transform, &GlobalTransform), With<Spawned>>, // toplevel
+    net_q: Query<Entity, With<NetCollider>>,
+    spawned_q: Query<(Entity, &Transform, &GlobalTransform), (With<Spawned>, Without<Ignored>)>, // toplevel
     scene_q: Query<&SceneRoot>,
     parent_q: Query<&ChildOf>,
-    listener_q: Query<&Transform, With<SpatialListener3D>>,
-    ignored_q: Query<&Ignored>,
     fx: Res<FxAssets>,
 ) {
-    // Fetch the spatializer location to avoid miscalculation.
-    // To avoid https://github.com/CorvusPrudens/bevy_seedling/issues/87
-    let spat_xfrm_opt = listener_q.iter().next();
+    let Some(net) = net_q.iter().next() else {
+        return;
+    };
+
     let mut rng = rand::rng();
-
-    let (net, net_gxfrm) = *net_q;
-
     for event in reader.read() {
         if event.collider1 == net || event.collider2 == net {
             // Caught something...
             let not_net = if event.collider1 == net { event.collider2 } else { event.collider1 };
-            if ignored_q.contains(not_net) {
-                // Already handled.
-                continue;
-            }
 
             let mut ball = None;
             let mut ball_xfrm = None;
@@ -237,10 +291,12 @@ pub(crate) fn check_ball_catch(
                         end: Vec3::splat(0.001),
                     }
                 );
+                commands.entity(not_net).try_insert((
+                    Ignored,
+                ));
                 commands.entity(ball).try_insert((
                     // Make static so it won't move by physics
                     RigidBody::Static,
-                    Ignored,
                     DespawnAfter(xfrm_tween.cycle_duration()),
                     TweenAnim::new(xfrm_tween).with_destroy_on_completed(true),
                     AimForCamera,
@@ -268,15 +324,7 @@ pub(crate) fn check_ball_catch(
                     },
                     VolumeNode::from_linear(rng.random_range(0.5..1.0)),
 
-                    sample_effects![SpatialBasicNode {
-                        offset: (if let Some(spat_xfrm) = spat_xfrm_opt {
-                            spat_xfrm.translation - ball_gxfrm.translation()
-                        } else {
-                            Vec3::new(10.0, 10.0, 10.0)
-                        })
-                        .into(),
-                        ..default()
-                    }],
+                    sample_effects![SpatialBasicNode::default()],
                 ));
             }
         }

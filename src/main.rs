@@ -105,8 +105,8 @@ fn main() -> AppExit {
         .insert_gizmo_config(
             PhysicsGizmos::default(),
             GizmoConfig {
-                // enabled: true,
-                enabled: false,
+                enabled: true,
+                // enabled: false,
                 depth_bias: -0.1,
                 ..default()
             },

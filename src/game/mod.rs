@@ -117,12 +117,23 @@ pub(crate) struct Spawned;
 pub(crate) struct Base(pub Entity, pub Transform);
 
 
+/// Marker (in .glb) for the death box.
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+#[type_path = "game"]
+pub(crate) struct DeathboxCollider;
 
 /// Marker (in .glb) for the collider.
 #[derive(Component, Reflect)]
 #[reflect(Component)]
 #[type_path = "game"]
 pub(crate) struct NetCollider;
+
+/// Marker (in .glb) for a consumer.
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+#[type_path = "game"]
+pub(crate) struct ConsumerCollider;
 
 /// Is spawning active?
 #[derive(Resource, Reflect, Default)]
@@ -152,8 +163,6 @@ pub(crate) struct ShakeTime(pub(crate) Duration);
 /// Set while shaking sound active.
 #[derive(Component)]
 pub(crate) struct ShakingSound;
-
-
 
 fn observe_spawn_mesh(
     ready: On<SceneInstanceReady>,

@@ -9,18 +9,12 @@ impl Plugin for AudioCommonPlugin {
             .add_plugins(SeedlingPlugin::default())
             .add_systems(Startup, initialize_audio)
 
-            // .add_systems(Startup,
-            //     preload_audio
-            // )
-            // .add_systems(OnEnter(LevelState::Playing),
-            //     init_background_audio
-            // )
             .add_systems(PostUpdate,
-                apply_volumes
+                (
+                    apply_spatial_fixes,
+                    apply_volumes,
+                )
             )
-            // .add_systems(Update,
-            //     spawn_menu_sfx
-            // )
         ;
     }
 }
@@ -94,6 +88,22 @@ pub(crate) fn initialize_audio(master: Single<Entity, With<MainBus>>, mut comman
         },
         PoolSize(2 ..= 8),
     ));
+}
+
+/// Apply the correct offset to new SpatialBasicNodes.
+///
+/// Workaround for https://github.com/CorvusPrudens/bevy_seedling/issues/87
+pub(crate) fn apply_spatial_fixes(
+    mut commands: Commands,
+    listener_q: Query<&Transform, With<SpatialListener3D>>,
+    mut spatial_q: Query<(&Transform, &mut SpatialBasicNode), Added<SpatialBasicNode>>,
+) {
+    // Fetch the spatializer location.
+    let Some(spat_xfrm) = listener_q.iter().next() else { return };
+
+    for (xfrm, mut node) in spatial_q.iter_mut() {
+        node.offset = (Into::<Vec3>::into(spat_xfrm.translation) - xfrm.translation).into();
+    }
 }
 
 /// Apply mute-able UserVolume to VolumeNodes.
