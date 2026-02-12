@@ -19,14 +19,14 @@ use bevy_egui::input::egui_wants_any_keyboard_input;
 pub(crate) const ID: &str = "level0";
 pub(crate) const NAME: &str = "Level 0";
 
-pub struct Level0Plugin;
+pub struct Level3Plugin;
 
-impl Plugin for Level0Plugin {
+impl Plugin for Level3Plugin {
     fn build(&self, app: &mut App) {
         app
             .add_systems(
-                OnExit(GameplayState::AssetsLoaded),
-                on_assets_loaded
+                OnEnter(GameplayState::AssetsLoading),
+                on_assets_loading
             )
             .add_systems(
                 OnEnter(LevelState::Loaded),
@@ -47,7 +47,7 @@ impl Plugin for Level0Plugin {
     }
 }
 
-fn on_assets_loaded(mut list: ResMut<LevelList>, maps: Res<MapAssets>) {
+fn on_assets_loading(mut list: ResMut<LevelList>, maps: Res<MapAssets>) {
     list.0.push(LevelInfo {
         id: ID.to_string(),
         label: NAME.to_string(),

@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::{assets::*, level_0};
+use crate::{assets::*};
 use crate::player_spawning::spawn_player;
 use crate::game::*;
 use crate::common::*;

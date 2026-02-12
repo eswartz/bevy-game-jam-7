@@ -1,7 +1,13 @@
+
+mod logic;
+mod level_0;
+mod level_3;
+
+pub use logic::*;
+
 use std::time::Duration;
 
-use crate::logic::LogicPlugin;
-use crate::{assets::*, level_0};
+use crate::{assets::*};
 use crate::player_spawning::spawn_player;
 use crate::common::*;
 
@@ -18,6 +24,7 @@ use bevy::{
     scene::SceneInstanceReady,
 };
 
+
 pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
@@ -26,10 +33,13 @@ impl Plugin for GamePlugin {
             .add_plugins(LogicPlugin)
 
             .insert_resource(LevelList(default()))
-            .insert_resource(Base(Entity::PLACEHOLDER, Transform::IDENTITY))
-            .add_observer(observe_spawn_mesh)
 
             .add_plugins(level_0::Level0Plugin)
+            .add_plugins(level_3::Level3Plugin)
+
+            .insert_resource(Base(Entity::PLACEHOLDER, Transform::IDENTITY))
+
+            .add_observer(observe_spawn_mesh)
 
             .configure_loading_state(
                 LoadingStateConfig::new(ProgramState::Initializing)
