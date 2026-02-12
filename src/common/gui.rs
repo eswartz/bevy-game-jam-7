@@ -288,8 +288,16 @@ fn check_grab_focus_state(
     }
 }
 
+/// The information area of the GUI (small font, corner)
 #[derive(Component)]
-struct Info;
+pub(crate) struct InfoArea;
+
+/// The game status area of the GUI (large)
+#[derive(Component)]
+pub(crate) struct GameStatusArea;
+
+#[derive(Component)]
+pub(crate) struct ScoreArea;
 
 #[derive(Component)]
 struct PauseArea;
@@ -304,7 +312,7 @@ fn setup_gui_nodes(
     // Info
     commands.spawn((
         DespawnOnExit(ProgramState::InGame),
-        Info,
+        InfoArea,
         Text::new(""),
         TextFont {
             font: gui_assets.emoji.clone(),
@@ -315,6 +323,54 @@ fn setup_gui_nodes(
             position_type: PositionType::Absolute,
             top: Val::Px(12.0),
             left: Val::Px(12.0),
+            ..default()
+        },
+    ));
+
+    // Score
+    commands.spawn((
+        DespawnOnExit(ProgramState::InGame),
+        ScoreArea,
+        Text::default(),
+        TextFont {
+            font: gui_assets.std_ui.clone(),
+            font_size: 32.0,
+            ..default()
+        },
+        TextColor(Color::Srgba(tailwind::YELLOW_300)),
+        TextShadow {
+            offset: Vec2::splat(2.),
+            color: Color::linear_rgba(0., 0., 0., 1.0),
+        },
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(12.0),
+            right: Val::Px(12.0),
+            ..default()
+        },
+    ));
+
+    // Game Status
+    commands.spawn((
+        DespawnOnExit(ProgramState::InGame),
+        GameStatusArea,
+        Text::default(),
+        TextFont {
+            font: gui_assets.std_ui.clone(),
+            font_size: 32.0,
+            ..default()
+        },
+        TextColor(Color::Srgba(tailwind::YELLOW_100)),
+        TextShadow {
+            offset: Vec2::splat(2.),
+            color: Color::linear_rgba(0., 0., 0., 1.0),
+        },
+        Node {
+            width: Val::Percent(100.),
+            height: Val::Percent(100.),
+            flex_direction: FlexDirection::Column,
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
             ..default()
         },
     ));

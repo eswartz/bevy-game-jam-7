@@ -111,6 +111,11 @@ pub enum UserAction {
 
     /// Switch perspective.
     ChangeCamera,
+
+    /// Force winning the level.
+    ForceWin,
+    /// Force losing the level.
+    ForceLose,
 }
 
 /// Handle Escape, which is handled differently outside and inside menus.

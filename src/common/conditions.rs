@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::common::LevelState;
 use crate::common::OverlayState;
 use crate::common::PauseState;
 use crate::common::ProgramState;
@@ -23,4 +24,9 @@ pub fn is_game_active(program_state: Res<State<ProgramState>>) -> bool {
 
 pub fn is_in_menu(overlay: Res<State<OverlayState>>) -> bool {
     overlay.is_menu()
+}
+
+/// Set if the level is active (i.e. player can move around).
+pub fn is_level_active(level_state: Res<State<LevelState>>) -> bool {
+    matches!(*level_state.get(), LevelState::Playing | LevelState::Won | LevelState::Lost)
 }

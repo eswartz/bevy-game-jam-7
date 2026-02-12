@@ -103,5 +103,14 @@ pub fn default_input_map() -> InputMap<UserAction> {
         ButtonlikeChord::modified(MOD_CTRL_COMMAND, KeyCode::MediaTrackPrevious),
     );
 
+    input_map.insert(
+        ForceLose,
+        ButtonlikeChord::modified(MOD_CTRL_COMMAND, KeyCode::PageDown),
+    );
+    input_map.insert(
+        ForceWin,
+        ButtonlikeChord::modified(MOD_CTRL_COMMAND, KeyCode::PageUp),
+    );
+
     input_map
 }

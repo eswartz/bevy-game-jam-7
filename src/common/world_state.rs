@@ -29,16 +29,6 @@ impl Plugin for WorldStatePlugin {
             // .register_type::<DecorateGltfMeshes>()
             .insert_resource(Gravity((9.8 * Vec3::NEG_Y).into()))
             .init_resource::<SkyboxCache>()
-            // .add_loading_state(
-            //     LoadingState::new(GameplayState::AssetsLoading)
-            //         .continue_to_state(GameplayState::AssetsLoaded)
-            //         .load_collection::<SkyboxAssets>()
-            //         // .load_collection::<SoundFxAssets>()
-            //         // .load_collection::<VoiceAssets>()
-            //         // .load_collection::<MusicAssets>()
-            //         // .load_collection::<IconAssets>()
-            //         .load_collection::<MapAssets>()
-            // )
             .add_systems(OnEnter(GameplayState::AssetsLoaded),
                 (
                     transition_from_loading,
@@ -47,72 +37,30 @@ impl Plugin for WorldStatePlugin {
                 // .in_set(SimulationSystems)
                 .run_if(in_state(ProgramState::InGame))
             )
-            // .add_systems(OnTransition{ exited: GameplayState::AssetsLoaded, entered: GameplayState::Playing },
-
-            // .add_systems(OnEnter(GameplayState::AssetsLoading),
-            //     set_loading_overlay,
-            // )
-            .add_systems(OnExit(GameplayState::AssetsLoaded),
-                start_next_level,
+            .add_systems(OnEnter(GameplayState::Setup),
+                (
+                    start_world_setup
+                ).chain()
+                    .run_if(in_state(ProgramState::InGame))
             )
-
-            // // First time running.
-            // .add_systems(OnEnter(GameplayState::Setup),
-            //     (
-            //         spawn_level,
-            //     )
-            //     .chain()
-            //     // .in_set(SimulationSystems)
-            //     // .run_if(in_state(ProgramState::InGame)) // redundant
-            // )
-            // // Between levels.
-            // .add_systems(OnExit(LevelState::Advance),
-            //     (
-            //         despawn_world,
-            //         start_next_level,
-            //     )
-            //     .chain()
-            //     // .run_if(in_state(ProgramState::InGame)) // redundant
-            //     // .in_set(SimulationSystems)
-            // )
-
-            // .add_systems(OnEnter(LevelState::Setup),
-            //     start_level_setup,
-            // )
-            // .add_systems(OnEnter(LevelState::Advance),
-            //     start_level_setup,
-            // )
 
             .add_systems(OnTransition{ exited: ProgramState::InGame, entered: ProgramState::LaunchMenu },
                 (
                     despawn_world,
                 )
                 .chain()
-                // .in_set(SimulationSystems)
             )
-            // .add_systems(
-            //     PreUpdate,
-            //         setup_world_bounds
-            //             .run_if(on_message::<LevelLoadFinishedMessage>)
-            //             .run_if(in_state(GameplayState::Playing))
-            //             // .in_set(SimulationSystems)
-            // )
             .add_systems(
                 PreUpdate,
                     (
                         check_load_skybox,
                         check_load_reflection_probe,
-                        // fixup_blender_gltf_light_angles,
-                        // decorate_gltf_meshes,
-                        // assign_clips,
-                        // ground_rigid_bodies,
-                        check_level_setup,
+                        check_world_setup,
                     )
                     .chain()
+                    .run_if(resource_exists::<WorldSetup>)
                     .run_if(in_state(ProgramState::InGame))
-                    // .run_if(in_state(LevelState::Setup))
                     .run_if(in_state(GameplayState::Setup))
-                    // .in_set(SimulationSystems)
             )
         ;
     }
@@ -273,7 +221,6 @@ pub(crate) fn check_load_skybox(
     // use bevy::render::render_resource::*;
     let Some((cam, SkyboxModel{ skybox, xfrm, with_reflection_probe, enabled })) = load_skybox_q.iter().next() else {
         setup.waiting_skybox = false;
-        dbg!(&*setup);
         return
     };
 
@@ -410,42 +357,49 @@ pub(crate) fn check_load_reflection_probe(
     setup.waiting_reflections = false;
 }
 
+/// This marker is created once and marks where game level content is swapped out.
 pub(crate) fn setup_world_marker(
     mut commands: Commands,
+    world_q: Query<&WorldMarker>,
 ) {
-    commands.spawn((
-        Name::new("World"),
-        DespawnOnExit(ProgramState::InGame),
-        WorldMarker::default(),
-        Transform::IDENTITY,
-        Visibility::Inherited,
-    ));
+    if world_q.is_empty() {
+        commands.spawn((
+            Name::new("World"),
+            DespawnOnExit(ProgramState::InGame),
+            WorldMarker::default(),
+            Transform::IDENTITY,
+            Visibility::Inherited,
+        ));
+    }
 }
 
-fn start_next_level(
+fn start_world_setup(
     mut commands: Commands,
-    mut pause: ResMut<PauseState>,
+    // mut pause: ResMut<PauseState>,
 ) {
-    commands.set_state(LevelState::Initializing);
-    commands.set_state(OverlayState::Loading);
+    // commands.set_state(LevelState::Initializing);
+    // commands.set_state(OverlayState::Loading);
     commands.insert_resource(WorldSetup {
         waiting_skybox: true,
         waiting_reflections: false,
     });
-    pause.set_menu_paused(true);
+    log::warn!("start world setup");
+    // pause.set_menu_paused(true);
 }
 
-fn check_level_setup(
+fn check_world_setup(
     mut commands: Commands,
     setup: Res<WorldSetup>,
-    mut pause: ResMut<PauseState>,
+    // mut pause: ResMut<PauseState>,
 ) {
     // Done?
     if *setup == WorldSetup::default() {
-        commands.set_state(OverlayState::Hidden);
-        commands.set_state(GameplayState::Playing);
-        commands.set_state(LevelState::Loaded);
-        pause.set_menu_paused(false);
+        // commands.set_state(OverlayState::Hidden);
+        // pause.set_menu_paused(false);
+        log::warn!("done with world setup");
+        commands.remove_resource::<WorldSetup>();
+        // commands.set_state(LevelState::Loaded);
+        // commands.set_state(GameplayState::Playing);
     }
 }
 

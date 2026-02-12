@@ -93,6 +93,7 @@ fn main() -> AppExit {
                 bevy::dev_tools::states::log_transitions::<ProgramState>,
                 bevy::dev_tools::states::log_transitions::<GameplayState>,
                 bevy::dev_tools::states::log_transitions::<OverlayState>,
+                bevy::dev_tools::states::log_transitions::<LevelState>,
             ),
         )
         //////
@@ -105,8 +106,8 @@ fn main() -> AppExit {
         .insert_gizmo_config(
             PhysicsGizmos::default(),
             GizmoConfig {
-                enabled: true,
-                // enabled: false,
+                // enabled: true,
+                enabled: false,
                 depth_bias: -0.1,
                 ..default()
             },
@@ -177,12 +178,20 @@ fn main() -> AppExit {
             (on_exit_launch_menu.run_if(is_in_menu),
                 on_enter_in_game).chain(),
         )
+        // .add_systems(
+        //     OnEnter(ProgramState::InGame),
+        //     (ensure_3d_camera, show_3d_camera),
+        // )
+        // .add_systems(
+        //     OnEnter(ProgramState::LaunchMenu),
+        //     hide_3d_camera, //.in_set(SimulationSystems),
+        // )
         .add_systems(
-            OnEnter(ProgramState::InGame),
+            OnEnter(GameplayState::Playing),
             (ensure_3d_camera, show_3d_camera),
         )
         .add_systems(
-            OnEnter(ProgramState::LaunchMenu),
+            OnExit(GameplayState::Playing),
             hide_3d_camera, //.in_set(SimulationSystems),
         )
         .insert_resource(VideoSettings::default())
@@ -245,34 +254,36 @@ fn ensure_3d_camera(
 fn configure_world_camera(mut ent_commands: EntityCommands, use_clustered: bool) {
     ent_commands.insert((
         (
-            Name::new("WorldCamera"),
-            WorldCamera,
-            Camera3d::default(),
-            RenderLayers::layer(RENDER_LAYER_DEFAULT),
+            DespawnOnExit(GameplayState::Playing),
 
-            Exposure { ev100: 10.0 },
-            Camera {
-                order: 1,
-                clear_color: Color::BLACK.into(),
-                ..default()
-            },
-            Hdr,
-            Projection::Perspective(PerspectiveProjection {
-                // fov: std::f32::consts::PI / 5.0,
-                fov: 75f32.to_radians(),
-                ..default()
-            }),
-            OrderIndependentTransparencySettings::default(),
-            Msaa::Off,
+            (
+                Name::new("WorldCamera"),
+                WorldCamera,
+                Camera3d::default(),
+                RenderLayers::layer(RENDER_LAYER_DEFAULT),
 
-            PlayerCamera(CameraMode::FirstPerson),
-            OurCamera::default(),
-            Transform::from_xyz(0., 1., 0.),
+                Exposure { ev100: 10.0 },
+                Camera {
+                    order: 1,
+                    clear_color: Color::BLACK.into(),
+                    ..default()
+                },
+                Hdr,
+                Projection::Perspective(PerspectiveProjection {
+                    // fov: std::f32::consts::PI / 5.0,
+                    fov: 75f32.to_radians(),
+                    ..default()
+                }),
+                OrderIndependentTransparencySettings::default(),
+                Msaa::Off,
+
+                PlayerCamera(CameraMode::FirstPerson),
+                OurCamera::default(),
+                Transform::from_xyz(0., 1., 0.),
+            ),
 
             // Audio is from the perspective of the camera.
             SpatialListener3D::default(),
-
-            DespawnOnExit(GameplayState::Playing),
         ),
     ));
 
@@ -284,6 +295,8 @@ fn configure_world_camera(mut ent_commands: EntityCommands, use_clustered: bool)
 fn configure_viewer_camera(mut ent_commands: EntityCommands, use_clustered: bool) {
     ent_commands.insert((
         (
+            DespawnOnExit(GameplayState::Playing),
+
             Name::new("ViewCamera"),
             ViewerCamera,
             Camera3d::default(),
@@ -301,8 +314,6 @@ fn configure_viewer_camera(mut ent_commands: EntityCommands, use_clustered: bool
                 ..default()
             }),
             Msaa::Off,
-
-            DespawnOnExit(GameplayState::Playing),
         ),
     ));
 

@@ -6,11 +6,8 @@ use crate::common::*;
 
 use bevy::camera::visibility::RenderLayers;
 use bevy_seedling::prelude::*;
-use bevy_tweening::lens::{TransformPositionLens, TransformScaleLens};
-use bevy_tweening::{AnimCompletedEvent, EaseMethod, Tween, TweenAnim, Tweenable};
 use leafwing_input_manager::prelude::ActionState;
 use rand::RngExt;
-use rand::seq::IndexedRandom;
 
 use avian3d::prelude::*;
 use bevy::prelude::*;
@@ -40,7 +37,7 @@ impl Plugin for Level0Plugin {
                     .run_if(not(is_paused))
                     .run_if(not(is_in_menu))
                     .run_if(not(egui_wants_any_keyboard_input))
-                    .run_if(in_state(LevelState::Playing))
+                    .run_if(is_level_active)
                     .run_if(in_state(ProgramState::InGame))
             )
         ;
@@ -58,8 +55,10 @@ fn register_level(mut list: ResMut<LevelList>, maps: Res<MapAssets>) {
 fn on_level_loaded(
     mut commands: Commands,
     models: Res<ModelAssets>,
-    camera_q: Single<Entity, (With<Camera3d>, With<ViewerCamera>)>,
+    camera_q: Query<Entity, (With<Camera3d>, With<ViewerCamera>)>,
 ) {
+    log::warn!("level loaded");
+
     let net = commands.spawn((
         Name::new("Net"),
         RenderLayers::layer(RENDER_LAYER_VIEW),
@@ -67,7 +66,7 @@ fn on_level_loaded(
         Transform::from_xyz(0.0, 0.0, -2.0).with_scale(Vec3::splat(2.0)),
         Visibility::Visible,
     )).id();
-    commands.entity(*camera_q).add_child(net);
+    commands.entity(camera_q.single().unwrap()).add_child(net);
 
     commands.insert_resource(Spawning(false));
     commands.insert_resource(SpawnDelay(Duration::from_secs(1)));
@@ -78,7 +77,7 @@ fn on_level_loaded(
     commands.set_state(LevelState::Playing);
 }
 
-pub(crate) fn check_actions(
+fn check_actions(
     actions: Res<ActionState<UserAction>>,
     fx: Res<FxAssets>,
     time: Res<Time<Physics>>,

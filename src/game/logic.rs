@@ -1,24 +1,14 @@
 use std::time::Duration;
 
 use crate::{assets::*};
-use crate::player_spawning::spawn_player;
 use crate::game::*;
 use crate::common::*;
 
 use bevy_seedling::sample::PlaybackSettings;
-use bevy::asset::uuid::Uuid;
-use bevy::ecs::world::CommandQueue;
-use bevy_asset_loader::loading_state::LoadingStateAppExt as _;
-use bevy_asset_loader::loading_state::config::{ConfigureLoadingState as _, LoadingStateConfig};
-use bevy_egui::input::egui_wants_any_keyboard_input;
 use bevy_seedling::prelude::*;
 
 use avian3d::prelude::*;
 use bevy::prelude::*;
-use bevy::{
-    gltf::GltfMeshName,
-    scene::SceneInstanceReady,
-};
 use bevy_tweening::lens::TransformScaleLens;
 use bevy_tweening::*;
 use rand::RngExt as _;
@@ -33,11 +23,11 @@ impl Plugin for LogicPlugin {
                 FixedUpdate,
                 (
                     check_ball_catch,
-                    check_ball_consumer,
-                    check_ball_deathbox,
+                    check_ball_loss,
                 )
                 .before(TransformSystems::Propagate)
                 .after(PhysicsSystems::Writeback)
+                .run_if(resource_exists::<CurrentScore>)
                 .run_if(not(is_user_paused))
                 .run_if(in_state(ProgramState::InGame)),
             )
@@ -49,18 +39,20 @@ impl Plugin for LogicPlugin {
                 )
                 .run_if(not(is_paused))
                 .run_if(not(is_in_menu))
-                .run_if(not(egui_wants_any_keyboard_input))
-                .run_if(in_state(LevelState::Playing))
+                .run_if(is_level_active)
                 .run_if(in_state(ProgramState::InGame))
             )
         ;
     }
 }
 
+/// Spawn a ball from [Generator].
+/// Assigns the [Scoreable] from [LevelRoot].
 pub(crate) fn spawn_ball(
     mut commands: Commands,
     generator_q: Query<(Entity, &Transform), With<Generator>>,
     listener_q: Query<&Transform, With<SpatialListener3D>>,
+    scoreable_q: Single<&Scoreable, With<LevelRoot>>,
     delay: Res<SpawnDelay>,
     time: Res<Time<Physics>>,
     spawning: Res<Spawning>,
@@ -91,6 +83,7 @@ pub(crate) fn spawn_ball(
             SceneRoot(models.sphere.clone()),
             xfrm.with_scale(Vec3::splat(time.elapsed_secs() % 1.0 + 0.5)),
             Spawned,
+            **scoreable_q,
         ))
         // .observe(observe_spawn_mesh)
         ;
@@ -126,7 +119,6 @@ pub(crate) fn spawn_ball(
     }
 }
 
-
 pub(crate) fn shake_base(
     base: Res<Base>,
     shake: Option<Res<ShakeRequest>>,
@@ -155,12 +147,18 @@ pub(crate) fn shake_base(
     }
 }
 
-pub(crate) fn check_ball_consumer(
+pub(crate) fn check_ball_loss(
     mut commands: Commands,
+    level_state: Res<State<LevelState>>,
     parent_q: Query<&ChildOf>,
     spawned_q: Query<&Spawned, Without<Ignored>>,
+    scoreable_q: Query<&Scoreable>,
     scene_q: Query<&SceneRoot>,
-    sensor_q: Query<(&Transform, &CollidingEntities), (With<ConsumerCollider>, With<Sensor>)>,
+    sensor_q: Query<(&Transform, &CollidingEntities), (
+        Or<(With<ConsumerCollider>, With<DeathboxCollider>)>,
+        With<Sensor>,
+    )>,
+    mut score: ResMut<CurrentScore>,
     fx: Res<FxAssets>,
 ) {
     let mut rng = rand::rng();
@@ -169,21 +167,26 @@ pub(crate) fn check_ball_consumer(
             let mut parent = *ent;
             loop {
                 if spawned_q.contains(parent) {
-                    commands.spawn((
-                        UiSfx,
-                        SamplePlayer::new(
-                            // (*[&fx.belch_1, &fx.belch_2, &fx.belch_3]
-                            (*[&fx.loss]
-                                .choose(&mut rng)
-                                .unwrap())
-                            .clone(),
-                        ),
-                        PlaybackSettings {
-                            speed: rng.random_range(0.9..1.1),
-                            ..default()
-                        },
-                        VolumeNode::from_linear(rng.random_range(0.85..1.0)),
-                    ));
+                    if *level_state.get() == LevelState::Playing
+                    && let Ok(scoreable) = scoreable_q.get(parent) {
+                        score.score -= scoreable.lose as i32;
+
+                        commands.spawn((
+                            UiSfx,
+                            SamplePlayer::new(
+                                // (*[&fx.belch_1, &fx.belch_2, &fx.belch_3]
+                                (*[&fx.loss]
+                                    .choose(&mut rng)
+                                    .unwrap())
+                                .clone(),
+                            ),
+                            PlaybackSettings {
+                                speed: rng.random_range(0.9..1.1),
+                                ..default()
+                            },
+                            VolumeNode::from_linear(rng.random_range(0.85..1.0)),
+                        ));
+                    }
 
                     let xfrm_tween = Tween::new(
                         EaseMethod::EaseFunction(EaseFunction::BackOut),
@@ -218,37 +221,17 @@ pub(crate) fn check_ball_consumer(
     }
 }
 
-pub(crate) fn check_ball_deathbox(
-    mut commands: Commands,
-    parent_q: Query<&ChildOf>,
-    spawned_q: Query<&Spawned, Without<Ignored>>,
-    sensor_q: Query<&CollidingEntities, (With<DeathboxCollider>, With<Sensor>)>,
-) {
-    for coll in sensor_q.iter() {
-        for ent in coll.iter() {
-            let mut parent = *ent;
-            loop {
-                if spawned_q.contains(parent) {
-                    commands.entity(parent).despawn();
-                    break;
-                }
-                if let Ok(parent0) = parent_q.get(parent) {
-                    parent = parent0.0;
-                } else {
-                    break;
-                }
-            }
-        }
-    }
-}
-
+/// Catch counts when the collision starts then ends.
 pub(crate) fn check_ball_catch(
     mut reader: MessageReader<CollisionEnd>,
     mut commands: Commands,
+    level_state: Res<State<LevelState>>,
     net_q: Query<Entity, With<NetCollider>>,
     spawned_q: Query<(Entity, &Transform, &GlobalTransform), (With<Spawned>, Without<Ignored>)>, // toplevel
+    scoreable_q: Query<&Scoreable>,
     scene_q: Query<&SceneRoot>,
     parent_q: Query<&ChildOf>,
+    mut score: ResMut<CurrentScore>,
     fx: Res<FxAssets>,
 ) {
     let Some(net) = net_q.iter().next() else {
@@ -269,6 +252,29 @@ pub(crate) fn check_ball_catch(
                     ball = Some(ent);
                     ball_xfrm = Some(xfrm);
                     ball_gxfrm = Some(gxfrm);
+
+                    if *level_state.get() == LevelState::Playing
+                    && let Ok(scoreable) = scoreable_q.get(parent) {
+                        score.score += scoreable.gain as i32;
+
+                        commands.spawn((
+                            UiSfx,
+                            SamplePlayer::new(
+                                // (*[&fx.belch_1, &fx.belch_2, &fx.belch_3]
+                                (*[&fx.gain]
+                                    .choose(&mut rng)
+                                    .unwrap())
+                                .clone(),
+                            ),
+                            PlaybackSettings {
+                                speed: rng.random_range(0.9..1.1),
+                                ..default()
+                            },
+                            VolumeNode::from_linear(rng.random_range(0.85..1.0)),
+                        ));
+
+                    }
+
                     break;
                 }
                 if scene_q.contains(parent) {

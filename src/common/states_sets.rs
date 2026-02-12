@@ -85,16 +85,21 @@ pub enum ProgramState {
 pub enum GameplayState {
     Inactive,
     /// Initial state when starting fresh.
+    /// This only runs once per process.
     #[default]
     New,
     /// Transitional state when re-loading.
     /// This is used to distinguish from New -> ... transitions.
+    /// This only runs once per process.
     LoadingSave,
     /// Loading the assets for the mode.
+    /// /// This only runs once per process.
     AssetsLoading,
     /// Assets for the mode are loaded; continue to the appropriate state.
+    /// This only runs once per process.
     AssetsLoaded,
-    /// Asset loading is complete, now running systems to do final touches.
+    /// This state prompts loading the next level.
+    /// This state is re-entered between levels.
     Setup,
     /// Game in progress.
     Playing,
@@ -111,10 +116,15 @@ pub enum LevelState {
     /// Default state
     #[default]
     Initializing,
-    /// Content loaded.
+    /// Gameplay content, skybox, etc. have been loaded and initialized.
+    /// Now, in a specific level, set up initial score, positions, etc...
     Loaded,
     /// Ready to play.
     Playing,
+    /// In Win state.
+    Won,
+    /// In Lost state.
+    Lost,
     /// Switching levels.
     Advance,
 }
