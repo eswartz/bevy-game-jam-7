@@ -61,7 +61,7 @@ pub(crate) fn check_spawn_toggle(
     mut commands: Commands,
     switch_q: Query<Entity, With<GeneratorSwitchCollider>>,
     player_q: Query<(), With<Player>>,
-    parent_q: Query<&ChildOf>,
+    // parent_q: Query<&ChildOf>,
     mut spawning: ResMut<Spawning>,
     fx: Res<FxAssets>,
 ) {

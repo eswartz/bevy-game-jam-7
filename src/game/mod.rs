@@ -355,7 +355,7 @@ pub(crate) fn level_spawn_finished(
         ));
     }
     commands.set_state(OverlayState::Hidden);
-    commands.set_state(LevelState::Loaded);
+    commands.set_state(LevelState::LevelLoaded);
     pause.set_menu_paused(false);
 }
 

@@ -122,9 +122,12 @@ pub enum LevelState {
     /// Default state
     #[default]
     Initializing,
-    /// Gameplay content, skybox, etc. have been loaded and initialized.
-    /// Now, in a specific level, set up initial score, positions, etc...
-    Loaded,
+    /// Gameplay content has been loaded and initialized.
+    /// Now, in a specific level, set up SkyboxModel in WorldCamera,
+    /// then switch to LoadingSkybox.
+    LevelLoaded,
+    /// Skybox is being loaded. Switch to Playing once loaded.
+    LoadingSkybox,
     /// Ready to play.
     Playing,
     /// In Win state.

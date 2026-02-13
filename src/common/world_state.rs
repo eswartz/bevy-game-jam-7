@@ -8,6 +8,10 @@ use avian3d::prelude::*;
 use bevy::core_pipeline::Skybox;
 use image::imageops::FilterType;
 
+use crate::assets::SkyboxAssets;
+use crate::common::LevelState;
+use crate::common::WorldCamera;
+
 use super::states_sets::GameplayState;
 use super::states_sets::ProgramState;
 use super::texutils::SkyboxTransform;
@@ -31,30 +35,38 @@ impl Plugin for WorldStatePlugin {
                 // .in_set(SimulationSystems)
                 .run_if(in_state(ProgramState::InGame))
             )
-            .add_systems(OnEnter(GameplayState::Setup),
-                (
-                    start_world_setup
-                ).chain()
-                    .run_if(in_state(ProgramState::InGame))
-            )
-
             .add_systems(OnTransition{ exited: ProgramState::InGame, entered: ProgramState::LaunchMenu },
                 (
                     despawn_world,
                 )
                 .chain()
             )
+            // .add_systems(
+            //     PreUpdate,
+            //     insert_skybox
+            //         .run_if(in_state(GameplayState::Setup))
+            //         .run_if(in_state(ProgramState::InGame))
+            // )
+
+            .add_systems(OnEnter(LevelState::LoadingSkybox),
+                (
+                    start_skybox_setup
+                ).chain()
+                    .run_if(in_state(ProgramState::InGame))
+            )
+
             .add_systems(
                 PreUpdate,
                     (
                         check_load_skybox,
                         check_load_reflection_probe,
-                        check_world_setup,
+                        check_skybox_setup,
                     )
                     .chain()
-                    .run_if(resource_exists::<WorldSetup>)
+                    .run_if(resource_exists::<SkyboxSetup>)
                     .run_if(in_state(ProgramState::InGame))
-                    .run_if(in_state(GameplayState::Setup))
+                    // .run_if(in_state(GameplayState::Setup))
+                    .run_if(in_state(LevelState::LoadingSkybox))
             )
         ;
     }
@@ -87,7 +99,7 @@ impl AreaContent {
 #[derive(Resource, Debug, Default, Reflect, PartialEq)]
 #[reflect(Resource, Default)]
 #[type_path = "game"]
-pub(crate) struct WorldSetup {
+pub(crate) struct SkyboxSetup {
     pub(crate) waiting_skybox: bool,
     pub(crate) waiting_reflections: bool,
 }
@@ -206,6 +218,81 @@ pub struct SkyboxModel{
     pub enabled: bool,
 }
 
+// pub(crate) fn insert_skybox(
+//     mut commands: Commands,
+//     cam_q: Query<Entity, (With<Camera3d>, Added<WorldCamera>)>,
+//     skyboxes: Res<SkyboxAssets>,
+// ) {
+//     log::warn!("1");
+//     if let Some(cam) = cam_q.iter().next() {
+//         log::warn!("2");
+//         let (brightness, skybox) = (100.0, skyboxes.star_map.clone());
+//         // let (brightness, skybox, transform) = (500.0, skyboxes.driving_school.clone());
+//         // let (brightness, skybox, transform) = (lux::CLEAR_SUNRISE, skyboxes.kloppenheim_sky_map.clone());
+//         // let (brightness, skybox, transform) = (lux::CLEAR_SUNRISE, skyboxes.pure_sky.clone());
+//         // let add_reflection_probe = Some(commands.spawn_empty().id());
+//         let with_reflection_probe = Some((cam, 100.0));
+//         // let with_reflection_probe = None;
+//         commands.entity(cam).insert(SkyboxModel {
+//             skybox: Skybox {
+//                 image: skybox,
+//                 brightness,
+//                 ..default()
+//             },
+//             xfrm: SkyboxTransform::From1_0_2f_3f_4_5,
+//             with_reflection_probe,
+//             enabled: true, //state.show_skybox,
+//         });
+//     }
+// }
+
+/// This marker is created once and marks where game level content is swapped out.
+pub(crate) fn setup_world_marker(
+    mut commands: Commands,
+    world_q: Query<&WorldMarker>,
+) {
+    if world_q.is_empty() {
+        let ent = commands.spawn((
+            Name::new("World"),
+            DespawnOnExit(ProgramState::InGame),
+            WorldMarker::default(),
+            Transform::IDENTITY,
+            Visibility::Inherited,
+        )).id();
+        commands.insert_resource(WorldMarkerEntity(ent));
+    }
+}
+
+fn start_skybox_setup(
+    mut commands: Commands,
+) {
+    commands.insert_resource(SkyboxSetup {
+        waiting_skybox: true,
+        waiting_reflections: false,
+    });
+}
+
+fn check_skybox_setup(
+    mut commands: Commands,
+    setup: Res<SkyboxSetup>,
+) {
+    // Done?
+    if *setup == SkyboxSetup::default() {
+        commands.remove_resource::<SkyboxSetup>();
+        commands.set_state(LevelState::Playing);
+    }
+}
+
+pub(crate) fn despawn_world(
+    world: Single<Entity, With<WorldMarker>>,
+    child_q: Query<&Children>,
+    mut commands: Commands,
+) {
+    for kid in child_q.iter_descendants(*world) {
+        commands.entity(kid).try_despawn();
+    }
+}
+
 /// Generic system to check for any LoadSkybox component, and if found,
 /// make sure its image is loaded. Once loaded, convert it to a cubemap
 /// and apply to the camera, then remove the component.
@@ -215,7 +302,7 @@ pub(crate) fn check_load_skybox(
     video_settings: Res<VideoSettings>,
     mut images: ResMut<Assets<Image>>,
     mut skyboxes: ResMut<SkyboxCache>,
-    mut setup: ResMut<WorldSetup>,
+    mut setup: ResMut<SkyboxSetup>,
 ) {
     // use bevy::render::render_resource::*;
     let Some((cam, SkyboxModel{ skybox, xfrm, with_reflection_probe, enabled })) = load_skybox_q.iter().next() else {
@@ -255,7 +342,6 @@ pub(crate) fn check_load_skybox(
     }
 }
 
-
 /// Set this component when you wish to load a reflection probe asynchronously
 /// (given that it may take a long time to load the texture).
 #[derive(Component)]
@@ -272,7 +358,7 @@ pub(crate) fn check_load_reflection_probe(
     world: Res<WorldMarkerEntity>,
     mut commands: Commands,
     mut images: ResMut<Assets<Image>>,
-    mut setup: ResMut<WorldSetup>,
+    mut setup: ResMut<SkyboxSetup>,
 ) {
     use bevy::render::render_resource::*;
     let Some((entity, ReflectionProbeModel{ image, brightness })) = load_probe_q.iter().next() else {
@@ -350,50 +436,4 @@ pub(crate) fn check_load_reflection_probe(
     ));
 
     setup.waiting_reflections = false;
-}
-
-/// This marker is created once and marks where game level content is swapped out.
-pub(crate) fn setup_world_marker(
-    mut commands: Commands,
-    world_q: Query<&WorldMarker>,
-) {
-    if world_q.is_empty() {
-        let ent = commands.spawn((
-            Name::new("World"),
-            DespawnOnExit(ProgramState::InGame),
-            WorldMarker::default(),
-            Transform::IDENTITY,
-            Visibility::Inherited,
-        )).id();
-        commands.insert_resource(WorldMarkerEntity(ent));
-    }
-}
-
-fn start_world_setup(
-    mut commands: Commands,
-) {
-    commands.insert_resource(WorldSetup {
-        waiting_skybox: true,
-        waiting_reflections: false,
-    });
-}
-
-fn check_world_setup(
-    mut commands: Commands,
-    setup: Res<WorldSetup>,
-) {
-    // Done?
-    if *setup == WorldSetup::default() {
-        commands.remove_resource::<WorldSetup>();
-    }
-}
-
-pub(crate) fn despawn_world(
-    world: Single<Entity, With<WorldMarker>>,
-    child_q: Query<&Children>,
-    mut commands: Commands,
-) {
-    for kid in child_q.iter_descendants(*world) {
-        commands.entity(kid).try_despawn();
-    }
 }

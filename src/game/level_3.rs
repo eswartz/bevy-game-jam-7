@@ -26,7 +26,7 @@ impl Plugin for Level3Plugin {
                 register_level
             )
             .add_systems(
-                OnEnter(LevelState::Loaded),
+                OnEnter(LevelState::LevelLoaded),
                 on_level_loaded
                     .run_if(is_in_level(ID))
             )

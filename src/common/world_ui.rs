@@ -13,11 +13,11 @@ use bevy::render::view::ColorGradingGlobal;
 use bevy::render::view::ColorGradingSection;
 
 use crate::assets::SkyboxAssets;
+use crate::common::GameplayState;
+use crate::common::ProgramState;
 use crate::common::SkyboxTransform;
 use crate::common::WorldCamera;
 
-use super::states_sets::GameplayState;
-use super::states_sets::ProgramState;
 use super::video::Antialiasing;
 use super::video::GlassQuality;
 use super::video::VideoCameraSettingsChanged;
@@ -31,13 +31,6 @@ impl Plugin for WorldUiPlugin {
     fn build(&self, app: &mut App) {
         app
             .register_type::<SkyboxModel>()
-            // .add_systems(OnEnter(GameplayState::AssetsLoaded),
-            //     (
-            //         init_sandbox_skybox,
-            //     )
-            //     // .in_set(SimulationSystems)
-            //     .run_if(in_state(ProgramState::InGame))
-            // )
             .add_systems(PreUpdate,
                 (
                     apply_effect_settings,
@@ -178,29 +171,3 @@ pub fn apply_effect_settings(
 
     commands.remove_resource::<VideoEffectSettingsChanged>();
 }
-
-// pub(crate) fn init_sandbox_skybox(
-//     mut commands: Commands,
-//     cam_q: Query<Entity, (With<Camera3d>, With<WorldCamera>)>,
-//     skyboxes: Res<SkyboxAssets>,
-// ) {
-//     if let Ok(cam) = cam_q.single() {
-//         let (brightness, skybox) = (100.0, skyboxes.star_map.clone());
-//         // let (brightness, skybox, transform) = (500.0, skyboxes.driving_school.clone());
-//         // let (brightness, skybox, transform) = (lux::CLEAR_SUNRISE, skyboxes.kloppenheim_sky_map.clone());
-//         // let (brightness, skybox, transform) = (lux::CLEAR_SUNRISE, skyboxes.pure_sky.clone());
-//         // let add_reflection_probe = Some(commands.spawn_empty().id());
-//         let with_reflection_probe = Some((cam, 100.0));
-//         // let with_reflection_probe = None;
-//         commands.entity(cam).insert(SkyboxModel {
-//             skybox: Skybox {
-//                 image: skybox,
-//                 brightness,
-//                 ..default()
-//             },
-//             xfrm: SkyboxTransform::From1_0_2f_3f_4_5,
-//             with_reflection_probe,
-//             enabled: true, //state.show_skybox,
-//         });
-//     }
-// }
