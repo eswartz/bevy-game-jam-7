@@ -75,32 +75,22 @@ impl Plugin for GamePlugin {
                     .run_if(in_state(GameplayState::Playing))
             )
             .add_systems(
-                // OnExit(GameplayState::Playing),
                 OnTransition{ exited: GameplayState::Playing, entered: GameplayState::Setup },
                 despawn_level,
             )
 
-            // .add_systems(
-            //     OnEnter(LevelState::Loaded),
-            //     (
-            //         spawn_player_on_start,
-            //     ).chain()
-            // )
             .add_systems(
                 OnEnter(LevelState::Won),
                 won_level,
             )
             .add_systems(
                 OnEnter(LevelState::Lost),
-                lost_level,
+                lost_level
             )
 
             .add_systems(
                 OnEnter(LevelState::Advance),
-                (
-                    // despawn_level,
-                    advance_level,
-                ).chain()
+                advance_level
             )
 
             .add_systems(
@@ -138,7 +128,7 @@ impl Plugin for GamePlugin {
 }
 
 /// This defines the list of levels.
-#[derive(Resource, Reflect, Default, Clone, PartialEq)]
+#[derive(Resource, Reflect, Default, Clone, PartialEq, Debug)]
 #[reflect(Resource, Default)]
 #[type_path = "game"]
 pub(crate) struct LevelInfo {
@@ -148,7 +138,7 @@ pub(crate) struct LevelInfo {
 }
 
 /// This defines the list of levels.
-#[derive(Resource, Reflect, Default)]
+#[derive(Resource, Reflect, Default, Debug)]
 #[reflect(Resource, Default)]
 #[type_path = "game"]
 pub(crate) struct LevelList(pub(crate) Vec<LevelInfo>);
@@ -162,13 +152,13 @@ pub fn is_in_level(id: &str) -> impl Fn(Option<Res<CurrentLevel>>) -> bool {
 }
 
 /// The current level.
-#[derive(Resource, Reflect)]
+#[derive(Resource, Reflect, Debug)]
 #[reflect(Resource)]
 #[type_path = "game"]
 pub struct CurrentLevel(pub LevelInfo);
 
 /// The current score.
-#[derive(Resource, Reflect, Default)]
+#[derive(Resource, Reflect, Default, Debug)]
 #[reflect(Resource, Default)]
 #[type_path = "game"]
 pub struct CurrentScore {
@@ -338,7 +328,6 @@ fn observe_spawn_mesh(
 }
 
 pub(crate) fn level_spawn_started(mut commands: Commands, mut pause: ResMut<PauseState>) {
-    log::warn!("level_spawn_started");
     commands.set_state(LevelState::Initializing);
     commands.set_state(OverlayState::Loading);
     pause.set_menu_paused(true);
@@ -348,15 +337,10 @@ pub(crate) fn level_spawn_finished(mut commands: Commands, mut pause: ResMut<Pau
     commands.set_state(OverlayState::Hidden);
     commands.set_state(LevelState::Loaded);
     pause.set_menu_paused(false);
-    log::warn!("level_spawn_finished");
 }
 
 fn added_player_start(q: Query<&Transform, Added<PlayerStart>>) -> bool {
     let flag = q.iter().next().is_some();
-
-    if flag {
-        log::warn!("Saw PlayerStart");
-    }
     flag
 }
 
@@ -441,7 +425,6 @@ pub(crate) fn despawn_level(
     spawned_q: Query<Entity, With<Spawned>>,
     player_q: Query<Entity, With<Player>>,
 ) {
-    log::warn!("despawn level");
     for ent in sounds_q.iter() {
         commands.entity(ent).try_despawn();
     }
@@ -457,19 +440,7 @@ pub(crate) fn advance_level(
     mut commands: Commands,
     // gameplay_state: Res<State<GameplayState>>,
 ) {
-    log::warn!("next level");
-    // commands.set_state(LevelState::Playing);
-    // commands.set_state(GameplayState::Setup);
-
-    // commands.set_state(LevelState::Initializing);
-    // if *gameplay_state.get() == GameplayState::AssetsLoaded {
-    // commands.set_state(GameplayState::Setup);
-    // }
-
     commands.set_state(OverlayState::Loading);
-    // commands.set_state(ProgramState::InGame);
-    // commands.set_state(GameplayState::AssetsLoading);
-
     commands.set_state(GameplayState::Setup);
 }
 
@@ -544,18 +515,23 @@ fn check_end_level(
         return;
     }
 
+    // dbg!(&*level_info, &level_list.0);
     if let Some(current_index) = level_list.0.iter().position(|x| *x == level_info.0) {
-        let next_index = (current_index + 1) % level_list.0.len();
-        commands.insert_resource(CurrentLevel(level_list.0[next_index].clone()));
+        let next_index = current_index + 1;
+        if next_index >= level_list.0.len() {
+            commands.remove_resource::<CurrentLevel>();
+            commands.set_state(ProgramState::Completed);
+            commands.set_state(LevelState::Initializing);
+            commands.set_state(GameplayState::Done);
+            commands.set_state(OverlayState::GameOverScreen);
+        } else {
+            commands.insert_resource(CurrentLevel(level_list.0[next_index].clone()));
+            commands.set_state(LevelState::Advance);
+        }
     } else {
         log::error!("current level not found!");
+        commands.set_state(LevelState::Advance);
     };
-
-    commands.set_state(LevelState::Advance);
-
-    // commands.set_state(OverlayState::Loading);
-    // commands.set_state(GameplayState::Setup);
-    // commands.set_state(GameplayState::AssetsLoading);
 }
 
 fn check_actions(

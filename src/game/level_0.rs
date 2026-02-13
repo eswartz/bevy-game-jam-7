@@ -57,8 +57,6 @@ fn on_level_loaded(
     models: Res<ModelAssets>,
     camera_q: Query<Entity, (With<Camera3d>, With<ViewerCamera>)>,
 ) {
-    log::warn!("level loaded");
-
     let net = commands.spawn((
         Name::new("Net"),
         RenderLayers::layer(RENDER_LAYER_VIEW),

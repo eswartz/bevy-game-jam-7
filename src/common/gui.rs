@@ -41,15 +41,8 @@ impl Plugin for GuiPlugin {
                 ensure_font_assets,
                 grab_cursor_for_game,
                 setup_gui_nodes,
-                // (
-                //     ensure_egui_context,
-                //     setup_egui_style,
-                // )
-                //     .after(EguiStartupSet::InitContexts)
-                //     .in_set(SimulationSystems),
             )
             .chain()
-            // .in_set(InteractionSystems)
         )
         .add_systems(OnEnter(OverlayState::Hidden),
             grab_cursor_for_game,
@@ -65,6 +58,7 @@ impl Plugin for GuiPlugin {
             on_loading)
         .add_systems(OnExit(OverlayState::Loading),
             on_loading_finished)
+
         .add_systems(
             Update,
             check_gui_state.run_if(resource_changed::<GuiState>.or(resource_changed::<State<OverlayState>>)),
@@ -72,7 +66,6 @@ impl Plugin for GuiPlugin {
         .add_systems(
             Update,
             (
-                // update_debug_status,
                 check_grab_focus_state,
                 update_pause_ui,
                 update_mute_ui,
@@ -101,8 +94,8 @@ pub struct GuiAssets {
 }
 
 impl GuiAssets {
-    pub const STD_UI_FONT_PATH: &'static str = "fonts/Recursive-Bold.ttf";
-    pub const STD_UI_FONT_NAME: &'static str = "Recursive";
+    // pub const STD_UI_FONT_PATH: &'static str = "fonts/Recursive-Bold.ttf";
+    // pub const STD_UI_FONT_NAME: &'static str = "Recursive";
 }
 
 fn ensure_font_assets(
@@ -121,7 +114,6 @@ pub(crate) fn on_loading(
     let ent_commands = commands.spawn((
         Name::new("Loading..."),
         LoadingScreen,
-        DespawnOnExit(OverlayState::Loading)
     ));
     setup_loading_screen(ent_commands, fonts.as_deref());
 }
@@ -140,7 +132,6 @@ pub fn setup_loading_screen(
     fonts: Option<&GuiAssets>,
 ) -> Entity {
     ent_commands.insert((
-        DespawnOnExit(OverlayState::Loading),
         Node {
             width: Val::Percent(100.),
             height: Val::Percent(100.),

@@ -30,7 +30,10 @@ impl Plugin for ActionPlugin {
             .insert_resource(ClashStrategy::PrioritizeLongest)
             .add_systems(
                 Update,
-                (process_global_actions, handle_escape).run_if(in_state(ProgramState::InGame)),
+                (
+                    process_global_actions,
+                    handle_escape,
+                ),
             );
     }
 }
@@ -142,16 +145,16 @@ fn handle_escape(
                 OverlayState::Hidden => {
                     // The one case where Escape *opens* the menu the first time.
                     previous_menu.0.clear();
-                    // commands.insert_resource(GoBackInMenuRequest);
-                    commands.set_state(OverlayState::EscapeMenu)
+                    commands.set_state(OverlayState::EscapeMenu);
                 }
                 OverlayState::EscapeMenu => {
-                    // previous_menu.0.clear();
                     commands.insert_resource(GoBackInMenuRequest);
-                    // commands.set_state(OverlayState::Hidden)
                 }
                 OverlayState::MainMenu => {
                     // Ignore, since we don't leave exit via Quit (TODO: can this quit?)
+                }
+                OverlayState::GameOverScreen => {
+                    commands.set_state(OverlayState::MainMenu);
                 }
                 OverlayState::DebugGuiVisible => commands.set_state(OverlayState::Hidden),
                 _ => (),

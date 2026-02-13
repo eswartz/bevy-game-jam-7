@@ -10,6 +10,7 @@ use crate::assets::*;
 use crate::audio::AudioPlugin;
 use crate::game::GamePlugin;
 use crate::menus::MenuPlugin;
+use bevy::color::palettes::tailwind;
 use bevy_seedling::prelude::*;
 use common::*;
 
@@ -152,12 +153,6 @@ fn main() -> AppExit {
 
         .insert_resource(PlayerInputSettings::for_space())
 
-        // .add_loading_state(
-        //         LoadingState::new(ProgramState::Initializing)
-        //             .load_collection::<MusicAssets>()
-        //             .load_collection::<FxAssets>()
-        //     )
-
         .add_loading_state(
                 LoadingState::new(GameplayState::AssetsLoading)
                     .continue_to_state(GameplayState::AssetsLoaded)
@@ -178,14 +173,6 @@ fn main() -> AppExit {
             (on_exit_launch_menu.run_if(is_in_menu),
                 on_enter_in_game).chain(),
         )
-        // .add_systems(
-        //     OnEnter(ProgramState::InGame),
-        //     (ensure_3d_camera, show_3d_camera),
-        // )
-        // .add_systems(
-        //     OnEnter(ProgramState::LaunchMenu),
-        //     hide_3d_camera, //.in_set(SimulationSystems),
-        // )
         .add_systems(
             OnEnter(GameplayState::Playing),
             (ensure_3d_camera, show_3d_camera),
@@ -201,6 +188,11 @@ fn main() -> AppExit {
         .init_state::<LevelState>()
         .insert_resource(ProductName(PRODUCT_NAME.to_string()))
         .insert_resource(PauseState::new(false))
+
+        .add_systems(OnEnter(OverlayState::GameOverScreen),
+            on_game_over_screen)
+        .add_systems(OnExit(OverlayState::GameOverScreen),
+            on_game_over_screen_finished)
 
         /////
         .add_plugins(GamePlugin)
@@ -380,4 +372,82 @@ fn init_perf_ui(mut commands: Commands) {
         refresh_interval: Duration::from_secs_f32(1.0 / 10.0),
         ..default()
     });
+}
+
+
+#[derive(Component)]
+pub(crate) struct GameOverScreen;
+
+pub(crate) fn on_game_over_screen(
+    mut commands: Commands,
+    fonts: Option<Res<GuiAssets>>,
+) {
+    let ent_commands = commands.spawn((
+        Name::new("Loading..."),
+        GameOverScreen,
+    ));
+    setup_game_over_screen(ent_commands, fonts.as_deref());
+}
+
+pub(crate) fn on_game_over_screen_finished(
+    mut commands: Commands,
+    gui_q: Query<Entity, With<GameOverScreen>>,
+) {
+    for ent in gui_q.iter() {
+        commands.entity(ent).try_despawn();
+    }
+}
+
+pub fn setup_game_over_screen(
+    mut ent_commands: EntityCommands,
+    fonts: Option<&GuiAssets>,
+) -> Entity {
+    ent_commands.insert((
+        Node {
+            width: Val::Percent(100.),
+            height: Val::Percent(100.),
+            flex_direction: FlexDirection::Column,
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
+            .. default()
+        },
+        BackgroundColor(tailwind::GREEN_800.with_alpha(0.75).into()),
+        RenderLayers::from_layers(&[RENDER_LAYER_UI]),
+    ))
+    .with_children(|builder| {
+        builder.spawn((
+            Text::new(
+                "You Won!",
+            ),
+            TextFont {
+                font: fonts.map_or(default(), |fonts| fonts.std_ui.clone()),
+                font_size: 32.0,
+                .. default()
+            },
+            TextColor(Color::WHITE.with_alpha(0.5)),
+        ));
+        builder.spawn((
+            Text::new(
+                "\u{a0}",
+            ),
+            TextFont {
+                font: fonts.map_or(default(), |fonts| fonts.std_ui.clone()),
+                font_size: 32.0,
+                .. default()
+            },
+            TextColor(Color::WHITE.with_alpha(0.5)),
+        ));
+        builder.spawn((
+            Text::new(
+                "Thanks for playing!",
+            ),
+            TextFont {
+                font: fonts.map_or(default(), |fonts| fonts.std_ui.clone()),
+                font_size: 32.0,
+                .. default()
+            },
+            TextColor(Color::WHITE.with_alpha(0.5)),
+        ));
+    })
+    .id()
 }

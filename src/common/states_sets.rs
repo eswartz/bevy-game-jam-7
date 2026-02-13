@@ -25,6 +25,8 @@ pub enum OverlayState {
     VideoMenu,
     /// Control menu is up.
     ControlsMenu,
+    /// Game Over menu is up.
+    GameOverScreen,
     /// egui controls are up
     DebugGuiVisible,
 }
@@ -73,6 +75,8 @@ pub enum ProgramState {
     /// This state means some aspect of the game is active,
     /// possibly paused, scripted, or behind a transient menu.
     InGame,
+    /// Completed the game.
+    Completed,
 }
 
 /// While the program state is in game,
@@ -103,6 +107,8 @@ pub enum GameplayState {
     Setup,
     /// Game in progress.
     Playing,
+    /// Game completed.
+    Done,
 }
 
 

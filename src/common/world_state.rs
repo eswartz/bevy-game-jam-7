@@ -8,10 +8,7 @@ use avian3d::prelude::*;
 use bevy::core_pipeline::Skybox;
 use image::imageops::FilterType;
 
-use super::lifecycle::PauseState;
 use super::states_sets::GameplayState;
-use super::states_sets::LevelState;
-use super::states_sets::OverlayState;
 use super::states_sets::ProgramState;
 use super::texutils::SkyboxTransform;
 use super::texutils::convert_strip_to_cubemap;
@@ -26,7 +23,6 @@ impl Plugin for WorldStatePlugin {
         app
             .register_type::<WorldMarker>()
             .register_type::<NextLevelIndex>()
-            // .register_type::<DecorateGltfMeshes>()
             .insert_resource(Gravity((9.8 * Vec3::NEG_Y).into()))
             .init_resource::<SkyboxCache>()
             .add_systems(OnEnter(GameplayState::AssetsLoaded),
@@ -66,7 +62,6 @@ impl Plugin for WorldStatePlugin {
     }
 }
 
-// #[derive(FgdType, Default, Reflect, Debug, Clone, Copy, PartialEq, Eq, Hash, Display, FromRepr, EnumIter, EnumString, IntoStaticStr, VariantArray)]
 #[derive(Component, Default, Reflect, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[reflect(Default)]
 #[type_path = "game"]
@@ -375,31 +370,20 @@ pub(crate) fn setup_world_marker(
 
 fn start_world_setup(
     mut commands: Commands,
-    // mut pause: ResMut<PauseState>,
 ) {
-    // commands.set_state(LevelState::Initializing);
-    // commands.set_state(OverlayState::Loading);
     commands.insert_resource(WorldSetup {
         waiting_skybox: true,
         waiting_reflections: false,
     });
-    log::warn!("start world setup");
-    // pause.set_menu_paused(true);
 }
 
 fn check_world_setup(
     mut commands: Commands,
     setup: Res<WorldSetup>,
-    // mut pause: ResMut<PauseState>,
 ) {
     // Done?
     if *setup == WorldSetup::default() {
-        // commands.set_state(OverlayState::Hidden);
-        // pause.set_menu_paused(false);
-        log::warn!("done with world setup");
         commands.remove_resource::<WorldSetup>();
-        // commands.set_state(LevelState::Loaded);
-        // commands.set_state(GameplayState::Playing);
     }
 }
 

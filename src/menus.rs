@@ -10,25 +10,12 @@ use strum::VariantArray;
 
 use crate::ExitRequest;
 use crate::common::*;
+use crate::game::LevelList;
 
 pub struct MenuPlugin;
 impl Plugin for MenuPlugin {
     fn build(&self, app: &mut App) {
         app
-            // .add_plugins(MaterialPlugin::<ExtendedMaterial<StandardMaterial, TitleShader>>::default())
-            // .add_plugins(Text3dPlugin {
-            //     default_atlas_dimension: (1024, 512),
-            //     load_system_fonts: false,
-            //     ..default()
-            // })
-            // .register_pretty_material::<TitleShader>("title_shader")
-            // .register_asset_reflect::<TitleShader>()
-            // .add_plugins(PrettyTextPlugin)
-            //     font_paths: vec![
-            //         GuiAssets::STD_UI_FONT_PATH.into(),
-            //     ],
-            //     ..default()
-            // })
             .add_plugins(MenuCommonPlugin)
             .add_systems(OnEnter(OverlayState::MainMenu), on_enter_main_menu)
             .add_systems(OnEnter(OverlayState::EscapeMenu), on_enter_escape_menu)
@@ -141,7 +128,7 @@ fn on_enter_main_menu(
             ..default()
         },
         Text2dShadow {
-            offset: Vec2::new(16.0, 16.0),
+            offset: Vec2::new(8.0, -8.0),
             color: Color::BLACK,
             ..default()
         },
@@ -752,6 +739,7 @@ fn on_enter_video_menu(
 }
 
 fn start_game(mut commands: Commands) {
+    commands.insert_resource(LevelList::default());
     commands.set_state(OverlayState::Loading);
     commands.set_state(ProgramState::InGame);
     commands.set_state(GameplayState::AssetsLoading);

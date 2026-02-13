@@ -132,7 +132,6 @@ fn handle_menu_into(mut commands: Commands,
             prev_menu.0.truncate(index);
         }
         prev_menu.0.push(exiting);
-        dbg!(&prev_menu.0);
 
         // Do it.
         commands.set_state(to_enter);

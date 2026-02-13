@@ -39,7 +39,6 @@ pub(crate) fn egui_not_initialized(camera_q: Query<Entity, (With<Camera3d>, With
 
 pub(crate) fn ensure_egui_context(mut commands: Commands, camera_q: Query<Entity, (With<Camera3d>, With<WorldCamera>, Without<PrimaryEguiContext>)>)      {
     for camera_ent in camera_q.iter() {
-        eprintln!("A {camera_ent}");
         commands.entity(camera_ent).insert(
             PrimaryEguiContext,
         );
