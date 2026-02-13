@@ -69,6 +69,9 @@ pub(crate) fn spawn_player(world: &mut World, user_id: Uuid) -> Entity {
     //     radius as Scalar,
     // );
 
+    let mode = world.get_resource::<PlayerMode>().unwrap().clone();
+    dbg!(mode);
+
     let player = world.spawn((
         Name::new("Player"),
         DespawnOnExit(ProgramState::InGame),
@@ -88,7 +91,7 @@ pub(crate) fn spawn_player(world: &mut World, user_id: Uuid) -> Entity {
             RigidBody::Dynamic,
 
             (
-                Mass(5.),
+                Mass(75.),
                 CenterOfMass(player_scale / 2.),
                 Restitution::new(0.0),
                 Friction::ZERO.with_dynamic_coefficient(0.0).with_static_coefficient(0.5),
@@ -110,7 +113,7 @@ pub(crate) fn spawn_player(world: &mut World, user_id: Uuid) -> Entity {
             // Avoid flying too much when e.g. colliding with a projectile.
             MaxLinearSpeed(4096.0),
 
-            GravityScale(0.0),
+            GravityScale(if mode == PlayerMode::Fps { 9.8 } else { 0.0 }),
         ),
 
         // // This child component is used to:

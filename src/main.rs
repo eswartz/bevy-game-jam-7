@@ -161,6 +161,7 @@ fn main() -> AppExit {
 
         .insert_resource(OurUser(default()))
 
+        .insert_resource(PlayerMode::Space)
         .insert_resource(PlayerInputSettings::for_space())
 
         .add_loading_state(

@@ -60,9 +60,13 @@ impl Plugin for GamePlugin {
             )
             .add_systems(
                 Update,
-                spawn_player_on_start
-                    .run_if(added_player_start)
-                    .run_if(in_state(GameplayState::Playing))
+                (
+                    init_player_settings,
+                    spawn_player_on_start,
+                )
+                .chain()
+                .run_if(added_player_start)
+                .run_if(in_state(GameplayState::Playing))
             )
             .add_systems(
                 OnTransition{ exited: GameplayState::Playing, entered: GameplayState::Setup },
@@ -71,7 +75,7 @@ impl Plugin for GamePlugin {
 
             .add_systems(OnEnter(LevelState::LevelLoaded),
                 (
-                    start_skybox_setup
+                    start_skybox_setup,
                 ).chain()
                     .run_if(in_state(ProgramState::InGame))
             )
@@ -179,7 +183,13 @@ pub struct AutoEndLevelTimer(pub(crate) Timer);
 #[derive(Component, Reflect, Default)]
 #[reflect(Component, Default)]
 #[type_path = "game"]
-pub(crate) struct LevelRoot;
+pub struct LevelRoot;
+
+/// Place on LevelRoot for the camera mode of the level.
+#[derive(Component, Clone, Reflect)]
+#[reflect(Component, Clone)]
+#[type_path = "game"]
+pub struct PlayerCameraMode(pub PlayerMode);
 
 /// Place on LevelRoot for the camera effects to apply.
 #[derive(Component, Clone, Reflect)]
@@ -454,6 +464,22 @@ pub(crate) fn despawn_level(
     }
     for ent in player_q.iter() {
         commands.entity(ent).try_despawn();
+    }
+}
+//
+fn init_player_settings(
+    move_q: Query<&PlayerCameraMode, With<LevelRoot>>,
+    mut commands: Commands,
+    mut settings: ResMut<PlayerInputSettings>,
+) {
+    if let Ok(mode) = move_q.single() {
+        match mode.0 {
+            PlayerMode::Fps => *settings = PlayerInputSettings::for_fps(),
+            PlayerMode::Space => *settings = PlayerInputSettings::for_space(),
+        }
+        commands.insert_resource(mode.0);
+    } else {
+        log::warn!("no PlayerCameraMode in LevelRoot");
     }
 }
 

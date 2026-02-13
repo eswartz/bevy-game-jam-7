@@ -95,6 +95,7 @@ fn collect_player_movement(
     player_vel_q: Single<(Entity, &LinearVelocity), With<OurPlayer>>,
     mut cam_q: Single<&mut OurCamera, With<WorldCamera>>,
     time: Res<Time>,
+    mode: Res<PlayerMode>,
 ) {
     let mut instant_thrust = Vec3::ZERO;
 
@@ -119,7 +120,7 @@ fn collect_player_movement(
 
     cam_q.adjust_bob_roll_pitch(
         &cam_settings,
-        input_settings.mode,
+        *mode,
         time.delta_secs(),
         instant_thrust.z,
         instant_thrust.x,

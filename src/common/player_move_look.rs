@@ -8,6 +8,7 @@ use bevy::prelude::*;
 use crate::common::AreaContent;
 use crate::common::GameLayer;
 use crate::common::GameplayState;
+use crate::common::LevelState;
 use crate::common::OverlayState;
 use crate::common::PlayerInput;
 use crate::common::Saveable;
@@ -72,7 +73,6 @@ fn is_cheating() -> bool {
 #[reflect(Resource, Clone, Default)]
 #[type_path = "game"]
 pub struct PlayerInputSettings {
-    pub mode: PlayerMode,
     /// multiplier, +ve
     pub move_scale: Vec3,
     /// multiplier, +ve
@@ -108,11 +108,8 @@ pub struct PlayerInputSettings {
 }
 
 impl PlayerInputSettings {
-    #[allow(unused)]
     pub(crate) fn for_fps() -> Self {
         Self {
-            mode: PlayerMode::Fps,
-
             move_scale: Vec3::new(1.25, 1.0, 1.0), // strafe more
             turn_scale: Vec3::splat(0.05),
             velocity_ramp_scale: 1.0 / 8.0,
@@ -135,11 +132,8 @@ impl PlayerInputSettings {
         }
     }
 
-    #[allow(unused)]
     pub(crate) fn for_space() -> Self {
         Self {
-            mode: PlayerMode::Space,
-
             move_scale: Vec3::splat(1.0),
             turn_scale: Vec3::splat(0.1),
             velocity_ramp_scale: 1.0 / 4.0,
@@ -511,8 +505,9 @@ fn check_player_environment_fps(
     parent_q: Query<&ChildOf>,
     mut raycast: MeshRayCast,
     settings: Res<PlayerInputSettings>,
+    mode: Res<PlayerMode>,
 ) {
-    if settings.mode != PlayerMode::Fps {
+    if *mode != PlayerMode::Fps {
         return
     }
 
@@ -668,8 +663,9 @@ fn check_player_environment_space(
         With<Player>,
     >,
     settings: Res<PlayerInputSettings>,
+    mode: Res<PlayerMode>,
 ) {
-    if settings.mode != PlayerMode::Space {
+    if *mode != PlayerMode::Space {
         return
     }
 
@@ -781,8 +777,9 @@ pub(crate) fn process_player_input_movement_for_fps(
     mut inputs: MessageReader<PlayerInput>,
     time: Res<Time>,
     settings: Res<PlayerInputSettings>,
+    mode: Res<PlayerMode>,
 ) {
-    if settings.mode != PlayerMode::Fps {
+    if *mode != PlayerMode::Fps {
         return
     }
 
@@ -975,8 +972,9 @@ pub(crate) fn process_player_input_movement_for_space(
     mut inputs: MessageReader<PlayerInput>,
     time: Res<Time>,
     settings: Res<PlayerInputSettings>,
+    mode: Res<PlayerMode>,
 ) {
-    if settings.mode != PlayerMode::Space {
+    if *mode != PlayerMode::Space {
         return
     }
 
