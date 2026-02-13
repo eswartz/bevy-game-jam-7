@@ -8,11 +8,7 @@ use avian3d::prelude::*;
 use bevy::core_pipeline::Skybox;
 use image::imageops::FilterType;
 
-use crate::assets::SkyboxAssets;
 use crate::common::LevelState;
-use crate::common::WorldCamera;
-use crate::game::LevelRoot;
-use crate::game::SkyboxSelection;
 
 use super::states_sets::GameplayState;
 use super::states_sets::ProgramState;

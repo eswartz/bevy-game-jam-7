@@ -1,5 +1,5 @@
 
 //-- use marker for Skybox
+// -- use enums for MusicTrack
 -- more Skyboxes or world geometry
--- use enums for MusicTrack
 -- different materials in levels

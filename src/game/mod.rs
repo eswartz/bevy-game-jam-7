@@ -200,6 +200,15 @@ pub enum SkyboxSelection {
     Farm,
 }
 
+/// Place on LevelRoot for the music track to use.
+#[derive(Component, Clone, Reflect)]
+#[reflect(Component, Clone)]
+#[type_path = "game"]
+pub enum MusicTrack {
+    Song0,
+    Song2,
+}
+
 
 /// Marker for things that give a score.
 /// The [LevelRoot] is expected to have this.
@@ -224,12 +233,6 @@ pub(crate) struct Scoreable {
     /// How many to add if the entity is lost.
     pub(crate) lose: u8,
 }
-
-/// Marker for the music track to use.
-#[derive(Component, Reflect, Default)]
-#[reflect(Component, Default)]
-#[type_path = "game"]
-pub(crate) struct MusicTrack(pub usize);
 
 /// Marker for a thing that generates things.
 #[derive(Component, Reflect, Default)]

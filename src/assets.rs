@@ -2,6 +2,8 @@ use bevy::prelude::*;
 use bevy_asset_loader::asset_collection::AssetCollection;
 use bevy_seedling::sample::AudioSample;
 
+use crate::game::MusicTrack;
+
 #[derive(Resource, AssetCollection)]
 pub struct GuiAssets {
     #[asset(path = "fonts/Recursive-Bold.ttf")]
@@ -27,11 +29,10 @@ pub struct MusicAssets {
 }
 
 impl MusicAssets {
-    pub fn get_for(&self, index: usize) -> &Handle<AudioSample> {
-        match index % 2 {
-            0 => &self.song0,
-            1 => &self.song2,
-            _ => unreachable!()
+    pub fn get_for(&self, selection: &MusicTrack) -> &Handle<AudioSample> {
+        match selection {
+            MusicTrack::Song0 => &self.song0,
+            MusicTrack::Song2 => &self.song2,
         }
     }
 }
