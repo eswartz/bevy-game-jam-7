@@ -8,7 +8,11 @@ use avian3d::prelude::*;
 use bevy::core_pipeline::Skybox;
 use image::imageops::FilterType;
 
+use crate::assets::SkyboxAssets;
 use crate::common::LevelState;
+use crate::common::WorldCamera;
+use crate::game::LevelRoot;
+use crate::game::SkyboxSelection;
 
 use super::states_sets::GameplayState;
 use super::states_sets::ProgramState;
@@ -38,13 +42,6 @@ impl Plugin for WorldStatePlugin {
                     despawn_world,
                 )
                 .chain()
-            )
-
-            .add_systems(OnEnter(LevelState::LoadingSkybox),
-                (
-                    start_skybox_setup
-                ).chain()
-                    .run_if(in_state(ProgramState::InGame))
             )
 
             .add_systems(
@@ -203,34 +200,6 @@ pub struct SkyboxModel{
     pub enabled: bool,
 }
 
-// pub(crate) fn insert_skybox(
-//     mut commands: Commands,
-//     cam_q: Query<Entity, (With<Camera3d>, Added<WorldCamera>)>,
-//     skyboxes: Res<SkyboxAssets>,
-// ) {
-//     log::warn!("1");
-//     if let Some(cam) = cam_q.iter().next() {
-//         log::warn!("2");
-//         let (brightness, skybox) = (100.0, skyboxes.star_map.clone());
-//         // let (brightness, skybox, transform) = (500.0, skyboxes.driving_school.clone());
-//         // let (brightness, skybox, transform) = (lux::CLEAR_SUNRISE, skyboxes.kloppenheim_sky_map.clone());
-//         // let (brightness, skybox, transform) = (lux::CLEAR_SUNRISE, skyboxes.pure_sky.clone());
-//         // let add_reflection_probe = Some(commands.spawn_empty().id());
-//         let with_reflection_probe = Some((cam, 100.0));
-//         // let with_reflection_probe = None;
-//         commands.entity(cam).insert(SkyboxModel {
-//             skybox: Skybox {
-//                 image: skybox,
-//                 brightness,
-//                 ..default()
-//             },
-//             xfrm: SkyboxTransform::From1_0_2f_3f_4_5,
-//             with_reflection_probe,
-//             enabled: true, //state.show_skybox,
-//         });
-//     }
-// }
-
 /// This marker is created once and marks where game level content is swapped out.
 pub(crate) fn setup_world_marker(
     mut commands: Commands,
@@ -246,15 +215,6 @@ pub(crate) fn setup_world_marker(
         )).id();
         commands.insert_resource(WorldMarkerEntity(ent));
     }
-}
-
-fn start_skybox_setup(
-    mut commands: Commands,
-) {
-    commands.insert_resource(SkyboxSetup {
-        waiting_skybox: true,
-        waiting_reflections: false,
-    });
 }
 
 fn check_skybox_setup(

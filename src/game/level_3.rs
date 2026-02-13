@@ -55,10 +55,8 @@ fn register_level(mut list: ResMut<LevelList>, maps: Res<MapAssets>) {
 
 fn on_level_loaded(
     mut commands: Commands,
-    world_camera_q: Query<Entity, (With<Camera3d>, With<WorldCamera>)>,
     viewer_camera_q: Query<Entity, (With<Camera3d>, With<ViewerCamera>)>,
     models: Res<ModelAssets>,
-    skyboxes: Res<SkyboxAssets>,
 ) {
     let net = commands.spawn((
         Name::new("Net"),
@@ -74,24 +72,7 @@ fn on_level_loaded(
     commands.insert_resource(SpawnTimer(Timer::new(Duration::from_secs(1), TimerMode::Repeating)));
     commands.insert_resource(ShakeTime(Duration::ZERO));
 
-    // commands.set_state(LevelState::Playing);
-
-    let cam = world_camera_q.single().unwrap();
-
-    let (brightness, skybox) = (100.0, skyboxes.star_map.clone());
-    let with_reflection_probe = Some((cam, 100.0));
-    commands.entity(cam).insert(SkyboxModel {
-        skybox: Skybox {
-            image: skybox,
-            brightness,
-            ..default()
-        },
-        xfrm: SkyboxTransform::From1_0_2f_3f_4_5,
-        with_reflection_probe,
-        enabled: true, //state.show_skybox,
-    });
-
-    commands.set_state(LevelState::LoadingSkybox);
+    // commands.set_state(LevelState::LoadingSkybox);
 
 }
 

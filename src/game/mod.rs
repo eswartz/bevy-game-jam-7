@@ -4,11 +4,13 @@ mod level_0;
 mod level_3;
 
 use bevy::color::palettes::tailwind;
+use bevy::core_pipeline::Skybox;
 use leafwing_input_manager::prelude::ActionState;
 pub use logic::*;
 
 use std::time::Duration;
 
+use crate::assets::SkyboxAssets;
 use crate::player_spawning::spawn_player;
 use crate::common::*;
 
@@ -65,6 +67,13 @@ impl Plugin for GamePlugin {
             .add_systems(
                 OnTransition{ exited: GameplayState::Playing, entered: GameplayState::Setup },
                 despawn_level,
+            )
+
+            .add_systems(OnEnter(LevelState::LevelLoaded),
+                (
+                    start_skybox_setup
+                ).chain()
+                    .run_if(in_state(ProgramState::InGame))
             )
 
             .add_systems(
@@ -172,6 +181,7 @@ pub struct AutoEndLevelTimer(pub(crate) Timer);
 #[type_path = "game"]
 pub(crate) struct LevelRoot;
 
+/// Place on LevelRoot for the camera effects to apply.
 #[derive(Component, Clone, Reflect)]
 #[reflect(Component, Clone)]
 #[type_path = "game"]
@@ -179,6 +189,15 @@ pub enum CameraEffects {
     Normal,
     Mode1,
     Mode2,
+}
+
+/// Place on LevelRoot for the skybox to apply.
+#[derive(Component, Clone, Reflect)]
+#[reflect(Component, Clone)]
+#[type_path = "game"]
+pub enum SkyboxSelection {
+    Space,
+    Farm,
 }
 
 
@@ -432,6 +451,45 @@ pub(crate) fn despawn_level(
     }
     for ent in player_q.iter() {
         commands.entity(ent).try_despawn();
+    }
+}
+
+fn start_skybox_setup(
+    mut commands: Commands,
+    world_camera_q: Query<Entity, (With<Camera3d>, With<WorldCamera>)>,
+    skybox_q: Query<&SkyboxSelection, With<LevelRoot>>,
+    skyboxes: Res<SkyboxAssets>,
+) {
+    if let Ok(selection) = skybox_q.single() {
+        let cam = world_camera_q.single().unwrap();
+
+        let (brightness, skybox) = match selection {
+            SkyboxSelection::Space => (100.0, skyboxes.star_map.clone()),
+            SkyboxSelection::Farm => (light_consts::lux::CLEAR_SUNRISE, skyboxes.pure_sky.clone()),
+        };
+        let with_reflection_probe = Some((cam, 100.0));
+        // let with_reflection_probe = None;
+        commands.entity(cam).insert(SkyboxModel {
+            skybox: Skybox {
+                image: skybox,
+                brightness,
+                ..default()
+            },
+            xfrm: SkyboxTransform::From1_0_2f_3f_4_5,
+            with_reflection_probe,
+            enabled: true, //state.show_skybox,
+        });
+
+
+        commands.insert_resource(SkyboxSetup {
+            waiting_skybox: true,
+            waiting_reflections: false,
+        });
+        log::warn!("1");
+        commands.set_state(LevelState::LoadingSkybox);
+    } else {
+        commands.set_state(LevelState::Playing);
+        log::warn!("2");
     }
 }
 
