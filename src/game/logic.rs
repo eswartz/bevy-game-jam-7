@@ -104,6 +104,7 @@ pub(crate) fn spawn_ball(
     generator_q: Query<(Entity, &Transform), With<Generator>>,
     listener_q: Query<&Transform, With<SpatialListener3D>>,
     scoreable_q: Single<&Scoreable, With<LevelRoot>>,
+    world: Res<WorldMarkerEntity>,
     delay: Res<SpawnDelay>,
     time: Res<Time<Physics>>,
     spawning: Res<Spawning>,
@@ -131,6 +132,7 @@ pub(crate) fn spawn_ball(
 
     for (_ent, xfrm) in generator_q.iter() {
         commands.spawn((
+            ChildOf(world.0),
             SceneRoot(models.sphere.clone()),
             xfrm.with_scale(Vec3::splat(time.elapsed_secs() % 1.0 + 0.5)),
             Spawned,
@@ -139,6 +141,7 @@ pub(crate) fn spawn_ball(
         // .observe(observe_spawn_mesh)
         ;
         commands.spawn((
+            ChildOf(world.0),
             Sfx,
             // Make into spatial sound.
             Transform::from_translation(xfrm.translation),

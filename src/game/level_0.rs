@@ -81,23 +81,8 @@ fn check_actions(
     time: Res<Time<Physics>>,
     shake_q: Query<Entity, With<ShakingSound>>,
     mut shake_time: ResMut<ShakeTime>,
-    spawning: Res<Spawning>,
     mut commands: Commands,
 ) {
-    // if actions.just_released(&UserAction::Interact) {
-    //     let new_state = !spawning.0;
-    //     let sample = if new_state {
-    //         fx.on.clone()
-    //     } else {
-    //         fx.off.clone()
-    //     };
-    //     commands.spawn((
-    //         UiSfx,
-    //         SamplePlayer::new(sample),
-    //     ));
-    //     commands.insert_resource(Spawning(new_state))
-    // }
-
     let mut rng = rand::rng();
 
     // Shake the base with left/right/up/down.

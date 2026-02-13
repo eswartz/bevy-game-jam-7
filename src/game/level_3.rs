@@ -75,18 +75,6 @@ fn on_level_loaded(
     commands.set_state(LevelState::Playing);
 }
 
-fn assign_score(
-    mut commands: Commands,
-    ball_q: Query<Entity, (Without<Scoreable>, Added<Spawned>)>,
-) {
-    for ent in ball_q.iter() {
-        commands.entity(ent).try_insert(Scoreable {
-            gain: 2,
-            lose: 1,
-        });
-    }
-}
-
 fn check_actions(
     actions: Res<ActionState<UserAction>>,
     fx: Res<FxAssets>,

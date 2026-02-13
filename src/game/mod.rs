@@ -116,10 +116,10 @@ impl Plugin for GamePlugin {
             .add_systems(
                 Update,
                 (
-                    check_end_level,
+                    check_won_level.run_if(in_state(LevelState::Won)),
+                    check_lost_level.run_if(in_state(LevelState::Lost)),
                 )
                     .run_if(not(is_in_menu))
-                    .run_if(in_state(LevelState::Won).or(in_state(LevelState::Lost)))
                     .run_if(in_state(ProgramState::InGame))
                 ,
             )
@@ -339,7 +339,21 @@ pub(crate) fn level_spawn_started(mut commands: Commands, mut pause: ResMut<Paus
     pause.set_menu_paused(true);
 }
 
-pub(crate) fn level_spawn_finished(mut commands: Commands, mut pause: ResMut<PauseState>) {
+pub(crate) fn level_spawn_finished(
+    mut commands: Commands,
+    mut pause: ResMut<PauseState>,
+    sensable_q: Query<Entity, Or<(
+        With<DeathboxCollider>,
+        With<GeneratorSwitchCollider>,
+        With<ConsumerCollider>,
+    )>>,
+) {
+    for ent in sensable_q.iter() {
+        commands.entity(ent).insert((
+            Sensor,
+            CollisionEventsEnabled,
+        ));
+    }
     commands.set_state(OverlayState::Hidden);
     commands.set_state(LevelState::Loaded);
     pause.set_menu_paused(false);
@@ -402,25 +416,24 @@ pub(crate) fn ensure_first_level(
 pub(crate) fn spawn_level(
     mut commands: Commands,
     level: Res<CurrentLevel>,
-    world: Query<Entity, With<WorldMarker>>,
+    world: Res<WorldMarkerEntity>,
     mut score_q: Query<&mut Text, (With<ScoreArea>, Without<GameStatusArea>)>,
     mut status_q: Query<&mut Text, (With<GameStatusArea>, Without<ScoreArea>)>,
 ) {
     log::info!("Entering level {}", level.0.label);
 
-    let level = commands
+    commands
         .spawn((
             DespawnOnExit(GameplayState::Playing),
             SceneRoot(level.0.scene.clone()),
+            ChildOf(world.0),
         ))
         .observe(|_event: On<SceneInstanceReady>, mut commands: Commands,| {
             commands.set_state(GameplayState::Playing);
         })
-        .id();
-
+    ;
     commands.insert_resource(CurrentScore::default());
 
-    commands.entity(world.single().unwrap()).add_child(level);
     score_q.single_mut().unwrap().clear();
     status_q.single_mut().unwrap().clear();
 }
@@ -444,8 +457,11 @@ pub(crate) fn despawn_level(
 
 pub(crate) fn advance_level(
     mut commands: Commands,
-    // gameplay_state: Res<State<GameplayState>>,
+    spawned_q: Query<Entity, With<Spawned>>,
 ) {
+    for ent in spawned_q.iter() {
+        commands.entity(ent).try_despawn();
+    }
     commands.set_state(OverlayState::Loading);
     commands.set_state(GameplayState::Setup);
 }
@@ -510,7 +526,7 @@ fn lost_level(
     commands.insert_resource(AutoEndLevelTimer(Timer::new(Duration::from_secs(END_LEVEL_DELAY_SECS), TimerMode::Once)));
 }
 
-fn check_end_level(
+fn check_won_level(
     mut commands: Commands,
     mut end_timer: ResMut<AutoEndLevelTimer>,
     time: Res<Time<Physics>>,
@@ -521,7 +537,6 @@ fn check_end_level(
         return;
     }
 
-    // dbg!(&*level_info, &level_list.0);
     if let Some(current_index) = level_list.0.iter().position(|x| *x == level_info.0) {
         let next_index = current_index + 1;
         if next_index >= level_list.0.len() {
@@ -538,6 +553,19 @@ fn check_end_level(
         log::error!("current level not found!");
         commands.set_state(LevelState::Advance);
     };
+}
+
+fn check_lost_level(
+    mut commands: Commands,
+    mut end_timer: ResMut<AutoEndLevelTimer>,
+    time: Res<Time<Physics>>,
+) {
+    if !end_timer.0.tick(time.delta()).is_finished() {
+        return;
+    }
+
+    // Restarts level.
+    commands.set_state(LevelState::Advance);
 }
 
 fn check_actions(
