@@ -148,6 +148,7 @@ pub(crate) struct CrosshairTarget(pub(crate) Entity);
 
 /// Resource that exists when the crosshair is removed from a world node.
 #[derive(Resource)]
+#[allow(unused)]
 pub(crate) struct CrosshairDetarget(pub(crate) Entity);
 
 /// See if we're looking at something clickable.

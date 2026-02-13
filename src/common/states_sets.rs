@@ -25,16 +25,15 @@ pub enum OverlayState {
     VideoMenu,
     /// Control menu is up.
     ControlsMenu,
-    /// Game Over menu is up.
+    /// Game Over is up.
     GameOverScreen,
+    /// Error is up.
+    ErrorScreen,
     /// egui controls are up
     DebugGuiVisible,
 }
 
 impl OverlayState {
-    pub fn is_hidden(&self) -> bool {
-        *self == Self::Hidden
-    }
     pub fn is_menu(&self) -> bool {
         matches!(self,
             Self::MainMenu
@@ -49,9 +48,6 @@ impl OverlayState {
     pub fn is_debug(&self) -> bool {
         *self == Self::DebugGuiVisible
     }
-    pub fn is_escape(&self) -> bool {
-        *self == Self::EscapeMenu
-    }
 }
 
 
@@ -64,6 +60,8 @@ pub enum ProgramState {
     /// State before initial assets loaded.
     #[default]
     Initializing,
+    /// Assets could not be loaded.
+    Error,
     /// State when starting fresh, assets loaded.
     New,
     /// Transitional state when re-loading.

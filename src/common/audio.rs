@@ -94,7 +94,6 @@ pub(crate) fn initialize_audio(master: Single<Entity, With<MainBus>>, mut comman
 ///
 /// Workaround for https://github.com/CorvusPrudens/bevy_seedling/issues/87
 pub(crate) fn apply_spatial_fixes(
-    mut commands: Commands,
     listener_q: Query<&Transform, With<SpatialListener3D>>,
     mut spatial_q: Query<(&Transform, &mut SpatialBasicNode), Added<SpatialBasicNode>>,
 ) {

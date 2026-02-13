@@ -154,6 +154,7 @@ pub struct MenuItemBuilder<'w, 's> {
     first_ent_label: Option<(Entity, String)>,
 }
 
+#[allow(unused)]
 impl<'w, 's> MenuItemBuilder<'w, 's> {
     pub fn new(
         mut commands: Commands<'w, 's>,
@@ -472,6 +473,7 @@ impl MenuSlider {
         }
     }
 
+    #[allow(unused)]
     pub fn range(&self) -> f32 {
         *self.ui_range.end() - *self.ui_range.start()
     }

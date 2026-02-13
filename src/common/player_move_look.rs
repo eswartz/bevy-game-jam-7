@@ -195,6 +195,7 @@ impl MovementState {
             MovementState::Grounded | MovementState::Walking | MovementState::Running
         )
     }
+    #[allow(unused)]
     pub fn is_moving(&self) -> bool {
         matches!(
             *self,
@@ -271,6 +272,7 @@ impl Default for PlayerMovement {
 }
 
 impl PlayerMovement {
+    #[allow(unused)]
     pub fn set_rotation(&mut self, to_rot: Quat, transform: &mut Transform) {
         transform.rotation = to_rot;
     }
@@ -289,6 +291,7 @@ impl PlayerMovement {
     }
 
     /// Initiate an animated turn but lock the view.
+    #[allow(unused)]
     pub fn turn_toward_locking_view(&mut self, time: f32, from_rot: Quat, to_rot: Quat) {
         self.turn_time_secs = 0.0;
         self.turn_deadline_secs = time.max(0.001);
@@ -487,6 +490,7 @@ pub fn player_eyes(transform: &Transform, aabb: &ColliderAabb, look: &PlayerLook
 }
 
 /// Get the local position of the player's gun relative to the given player transform.
+#[allow(unused)]
 pub fn player_gun(transform: &Transform, eyes: Vec3) -> Vec3 {
     (eyes + Vec3::new(0., -0.25, 0.)) + transform.rotation * Vec3::NEG_Z * 0.25
 }

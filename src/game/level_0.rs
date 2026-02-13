@@ -6,7 +6,6 @@ use crate::common::*;
 
 use bevy::camera::visibility::RenderLayers;
 use bevy::core_pipeline::Skybox;
-use bevy_seedling::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 use rand::RngExt;
 

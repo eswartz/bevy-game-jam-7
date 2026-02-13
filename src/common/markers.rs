@@ -21,6 +21,7 @@ pub struct DespawnAfter(pub Duration);
 pub struct Ignored;
 
 #[derive(PhysicsLayer, Clone, Copy, Debug, Default)]
+#[allow(unused)]
 pub enum GameLayer {
     #[default]
     /// Layer 0 - the default layer that objects are assigned to

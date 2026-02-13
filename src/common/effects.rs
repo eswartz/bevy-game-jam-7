@@ -61,6 +61,7 @@ fn aim_for_camera(
 
 
 #[derive(Debug)]
+#[allow(unused)]
 pub struct TransformPositionScaleLens {
     pub start: Transform,
     pub end: Transform,

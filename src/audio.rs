@@ -10,6 +10,7 @@ use rand::RngExt;
 use crate::assets::FxAssets;
 use crate::assets::MusicAssets;
 use crate::common::*;
+use crate::game::MusicTrack;
 
 pub struct AudioPlugin;
 
@@ -42,12 +43,19 @@ impl Plugin for AudioPlugin {
 pub(crate) fn init_background_audio(
     mut commands: Commands,
     music: Res<MusicAssets>,
+    track_q: Query<&MusicTrack>,
+    world_q: Res<WorldMarkerEntity>,
 ) {
     let mut rng = rand::rng();
+    let song_index = match track_q.single() {
+        Ok(track) => track.0,
+        Err(_) => rng.random_range(0..10),
+    };
     commands.spawn((
+        ChildOf(world_q.0),
         DespawnOnExit(GameplayState::Playing),
         Music,
-        SamplePlayer::new(music.song0.clone()).looping(),
+        SamplePlayer::new(music.get_for(song_index).clone()).looping(),
         PlaybackSettings {
             play_from: PlayFrom::Seconds(rng.random_range(0.0 .. 5.0 * 60.0)),
             // on_complete: OnComplete::Despawn,

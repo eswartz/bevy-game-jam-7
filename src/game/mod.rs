@@ -22,7 +22,6 @@ use bevy_seedling::prelude::*;
 use avian3d::prelude::*;
 use bevy::prelude::*;
 use bevy::{
-    gltf::GltfMeshName,
     scene::SceneInstanceReady,
 };
 
@@ -203,6 +202,12 @@ pub(crate) struct Scoreable {
     pub(crate) lose: u8,
 }
 
+/// Marker for the music track to use.
+#[derive(Component, Reflect, Default)]
+#[reflect(Component, Default)]
+#[type_path = "game"]
+pub(crate) struct MusicTrack(pub usize);
+
 /// Marker for a thing that generates things.
 #[derive(Component, Reflect, Default)]
 #[reflect(Component, Default)]
@@ -283,29 +288,11 @@ pub(crate) struct ShakingSound;
 fn observe_spawn_mesh(
     ready: On<SceneInstanceReady>,
     children: Query<&Children>,
-    names: Query<&Name>,
     meshes: Query<&Mesh3d>,
-    parent: Query<&ChildOf>,
     mut commands: Commands,
 ) {
     for entity in children.iter_descendants(ready.entity) {
         if meshes.contains(entity) {
-            let owner_name_is = |name_str| -> bool {
-                let mut from = entity;
-                loop {
-                    if let Ok(name) = names.get(from)
-                        && name.eq_ignore_ascii_case(name_str)
-                    {
-                        return true;
-                    }
-                    if let Ok(p) = parent.get(from) {
-                        from = p.parent();
-                    } else {
-                        return false;
-                    }
-                }
-            };
-
             commands.entity(entity).insert((
                 MaxLinearSpeed(256.0),
                 CollisionLayers::new(
@@ -318,13 +305,6 @@ fn observe_spawn_mesh(
                     ],
                 ),
             ));
-
-            if owner_name_is("Base") || owner_name_is("Tube") {
-                // dbg!(entity);
-                commands
-                    .entity(entity)
-                    .insert(ColliderConstructor::TrimeshFromMesh);
-            }
         }
     }
 }
@@ -349,6 +329,7 @@ pub(crate) fn level_spawn_finished(
         commands.entity(ent).insert((
             Sensor,
             CollisionEventsEnabled,
+            CollidingEntities::default(),
         ));
     }
     if let Some((ent, xfrm)) = base_q.iter().next() {

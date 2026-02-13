@@ -126,7 +126,10 @@ fn main() -> AppExit {
         //////
 
         .add_loading_state(
-            LoadingState::new(ProgramState::Initializing).continue_to_state(ProgramState::New),
+            LoadingState::new(ProgramState::Initializing)
+                .continue_to_state(ProgramState::New)
+                .on_failure_continue_to_state(ProgramState::Error)
+            ,
         )
 
         .add_plugins(ActionPlugin)
@@ -156,6 +159,7 @@ fn main() -> AppExit {
         .add_loading_state(
                 LoadingState::new(GameplayState::AssetsLoading)
                     .continue_to_state(GameplayState::AssetsLoaded)
+                    .on_failure_continue_to_state(GameplayState::Done)
                     .load_collection::<SkyboxAssets>()
             )
 
@@ -193,6 +197,13 @@ fn main() -> AppExit {
             on_game_over_screen)
         .add_systems(OnExit(OverlayState::GameOverScreen),
             on_game_over_screen_finished)
+
+        .add_systems(OnEnter(ProgramState::Error),
+            on_enter_error)
+        .add_systems(OnEnter(OverlayState::ErrorScreen),
+            on_error_screen)
+        .add_systems(OnExit(OverlayState::ErrorScreen),
+            on_error_screen_finished)
 
         /////
         .add_plugins(GamePlugin)
@@ -398,7 +409,7 @@ pub(crate) fn on_game_over_screen_finished(
     }
 }
 
-pub fn setup_game_over_screen(
+pub(crate) fn setup_game_over_screen(
     mut ent_commands: EntityCommands,
     fonts: Option<&GuiAssets>,
 ) -> Entity {
@@ -440,6 +451,67 @@ pub fn setup_game_over_screen(
         builder.spawn((
             Text::new(
                 "Thanks for playing!",
+            ),
+            TextFont {
+                font: fonts.map_or(default(), |fonts| fonts.std_ui.clone()),
+                font_size: 32.0,
+                .. default()
+            },
+            TextColor(Color::WHITE.with_alpha(0.5)),
+        ));
+    })
+    .id()
+}
+
+#[derive(Component)]
+pub(crate) struct ErrorScreen;
+
+pub(crate) fn on_enter_error(
+    mut commands: Commands,
+) {
+    commands.set_state(OverlayState::ErrorScreen);
+}
+
+pub(crate) fn on_error_screen(
+    mut commands: Commands,
+    fonts: Option<Res<GuiAssets>>,
+) {
+    let ent_commands = commands.spawn((
+        Name::new("Loading..."),
+        ErrorScreen,
+    ));
+    setup_error_screen(ent_commands, fonts.as_deref());
+}
+
+pub(crate) fn on_error_screen_finished(
+    mut commands: Commands,
+    gui_q: Query<Entity, With<ErrorScreen>>,
+) {
+    for ent in gui_q.iter() {
+        commands.entity(ent).try_despawn();
+    }
+}
+
+pub(crate) fn setup_error_screen(
+    mut ent_commands: EntityCommands,
+    fonts: Option<&GuiAssets>,
+) -> Entity {
+    ent_commands.insert((
+        Node {
+            width: Val::Percent(100.),
+            height: Val::Percent(100.),
+            flex_direction: FlexDirection::Column,
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
+            .. default()
+        },
+        BackgroundColor(tailwind::RED_800.with_alpha(0.75).into()),
+        RenderLayers::from_layers(&[RENDER_LAYER_UI]),
+    ))
+    .with_children(|builder| {
+        builder.spawn((
+            Text::new(
+                "There is an installation error.\nPlease gather stdout and stderr and report.",
             ),
             TextFont {
                 font: fonts.map_or(default(), |fonts| fonts.std_ui.clone()),

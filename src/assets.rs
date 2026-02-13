@@ -1,10 +1,6 @@
 use bevy::prelude::*;
 use bevy_asset_loader::asset_collection::AssetCollection;
-use bevy_asset_loader::asset_collection::AssetCollectionWorld as _;
 use bevy_seedling::sample::AudioSample;
-
-use crate::common::SkyboxTransform;
-
 
 #[derive(Resource, AssetCollection)]
 pub struct GuiAssets {
@@ -22,13 +18,26 @@ impl GuiAssets {
 }
 
 #[derive(Resource, AssetCollection)]
+#[allow(unused)]
 pub struct MusicAssets {
     #[asset(path = "music/song0.ogg")]
     pub song0: Handle<AudioSample>,
+    #[asset(path = "music/song2.ogg")]
+    pub song2: Handle<AudioSample>,
 }
 
+impl MusicAssets {
+    pub fn get_for(&self, index: usize) -> &Handle<AudioSample> {
+        match index % 2 {
+            0 => &self.song0,
+            1 => &self.song2,
+            _ => unreachable!()
+        }
+    }
+}
 
 #[derive(Resource, AssetCollection)]
+#[allow(unused)]
 pub struct FxAssets {
     #[asset(path = "sounds/164472__deleted_user_2104797__crack-of-branch-3.ogg")]
     pub action: Handle<AudioSample>,
