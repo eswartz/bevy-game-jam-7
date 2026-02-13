@@ -22,6 +22,15 @@ impl Plugin for LogicPlugin {
             .add_systems(
                 FixedUpdate,
                 (
+                    check_spawn_toggle,
+                )
+                .run_if(resource_exists::<Spawning>)
+                .run_if(not(is_user_paused))
+                .run_if(in_state(ProgramState::InGame)),
+            )
+            .add_systems(
+                FixedUpdate,
+                (
                     check_ball_catch,
                     check_ball_loss,
                 )
@@ -43,6 +52,48 @@ impl Plugin for LogicPlugin {
                 .run_if(in_state(ProgramState::InGame))
             )
         ;
+    }
+}
+
+/// Toggle counts when the collision starts then ends.
+pub(crate) fn check_spawn_toggle(
+    mut reader: MessageReader<CollisionEnd>,
+    mut commands: Commands,
+    switch_q: Query<Entity, With<GeneratorSwitchCollider>>,
+    player_q: Query<(), With<Player>>,
+    parent_q: Query<&ChildOf>,
+    mut spawning: ResMut<Spawning>,
+    fx: Res<FxAssets>,
+) {
+    let Some(switch) = switch_q.iter().next() else {
+        return;
+    };
+
+    for event in reader.read() {
+        if event.collider1 == switch || event.collider2 == switch {
+            // Caught something...
+            let not_switch = if event.collider1 == switch { event.collider2 } else { event.collider1 };
+
+            // dbg!(not_switch);
+            // for parent in parent_q.iter_ancestors(not_switch) {
+            //     dbg!(parent);
+            if player_q.get(not_switch).is_ok() {
+                let new_state = !spawning.0;
+                spawning.0 = new_state;
+
+                let sample = if new_state {
+                    fx.on.clone()
+                } else {
+                    fx.off.clone()
+                };
+                commands.spawn((
+                    UiSfx,
+                    SamplePlayer::new(sample),
+                ));
+
+                break;
+            }
+        }
     }
 }
 

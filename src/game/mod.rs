@@ -209,6 +209,12 @@ pub(crate) struct Scoreable {
 #[type_path = "game"]
 pub(crate) struct Generator;
 
+/// Marker (in .glb) for a generator switch collider.
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+#[type_path = "game"]
+pub(crate) struct GeneratorSwitchCollider;
+
 /// Marker for things we spawned.
 #[derive(Component, Reflect, Default)]
 #[reflect(Component, Default)]

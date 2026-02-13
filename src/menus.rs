@@ -9,6 +9,7 @@ use bevy_seedling::prelude::Volume;
 use strum::VariantArray;
 
 use crate::ExitRequest;
+use crate::assets::GuiAssets;
 use crate::common::*;
 use crate::game::LevelList;
 

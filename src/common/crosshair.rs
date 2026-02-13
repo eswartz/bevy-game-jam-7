@@ -2,7 +2,7 @@ use bevy::camera::visibility::RenderLayers;
 use bevy::input::mouse::AccumulatedMouseMotion;
 use bevy::prelude::*;
 
-use crate::common::GuiAssets;
+use crate::assets::GuiAssets;
 use crate::common::RENDER_LAYER_DEFAULT;
 use crate::common::RENDER_LAYER_VIEW;
 use crate::common::WorldCamera;

@@ -9,6 +9,7 @@ use bevy_asset_loader::prelude::*;
 use bevy_inspector_egui::DefaultInspectorConfigPlugin;
 use bevy_seedling::prelude::MainBus;
 
+use crate::assets::GuiAssets;
 use crate::common::RENDER_LAYER_UI;
 
 use super::audio::UserVolume;
@@ -81,21 +82,6 @@ impl Plugin for GuiPlugin {
         // )
         ;
     }
-}
-
-#[derive(Resource, AssetCollection)]
-pub struct GuiAssets {
-    #[asset(path = "fonts/Recursive-Bold.ttf")]
-    pub std_ui: Handle<Font>,
-    #[asset(path = "fonts/emoji-icon-font.ttf")]
-    pub emoji: Handle<Font>,
-    #[asset(path = "textures/crosshair.png")]
-    pub crosshair: Handle<Image>,
-}
-
-impl GuiAssets {
-    // pub const STD_UI_FONT_PATH: &'static str = "fonts/Recursive-Bold.ttf";
-    // pub const STD_UI_FONT_NAME: &'static str = "Recursive";
 }
 
 fn ensure_font_assets(
