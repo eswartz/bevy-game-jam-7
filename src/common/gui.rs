@@ -327,30 +327,39 @@ fn setup_gui_nodes(
         },
     ));
 
-    // Game Status
+    // Game Status (win/lose)
     commands.spawn((
         DespawnOnExit(ProgramState::InGame),
-        GameStatusArea,
-        Text::default(),
-        TextFont {
-            font: gui_assets.std_ui.clone(),
-            font_size: 32.0,
-            ..default()
-        },
-        TextColor(Color::Srgba(tailwind::YELLOW_100)),
-        TextShadow {
-            offset: Vec2::splat(2.),
-            color: Color::linear_rgba(0., 0., 0., 1.0),
-        },
         Node {
             width: Val::Percent(100.),
             height: Val::Percent(100.),
             flex_direction: FlexDirection::Column,
             align_items: AlignItems::Center,
             justify_content: JustifyContent::Center,
-            ..default()
+            .. default()
         },
-    ));
+        BackgroundColor(Color::NONE),
+        RenderLayers::from_layers(&[RENDER_LAYER_UI]),
+    ))
+    .with_children(|builder| {
+        builder.spawn((
+            GameStatusArea,
+            Text::new(
+                "",
+            ),
+            TextFont {
+                font: gui_assets.std_ui.clone(),
+                font_size: 64.0,
+                .. default()
+            },
+            TextShadow {
+                offset: Vec2::splat(8.),
+                color: Color::linear_rgba(0., 0., 0., 1.0),
+            },
+            TextLayout::new(Justify::Center, LineBreak::WordBoundary),
+        ));
+    })
+    ;
 
     // Pause icon in upper right
     commands.spawn((
