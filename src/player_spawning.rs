@@ -70,7 +70,6 @@ pub(crate) fn spawn_player(world: &mut World, user_id: Uuid) -> Entity {
     // );
 
     let mode = world.get_resource::<PlayerMode>().unwrap().clone();
-    dbg!(mode);
 
     let player = world.spawn((
         Name::new("Player"),

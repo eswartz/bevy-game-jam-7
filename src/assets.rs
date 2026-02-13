@@ -79,6 +79,10 @@ pub struct FxAssets {
 pub struct MapAssets {
     #[asset(path = "maps/level_0.glb#Scene0")]
     pub level_0: Handle<Scene>,
+    #[asset(path = "maps/level_1.glb#Scene0")]
+    pub level_1: Handle<Scene>,
+    #[asset(path = "maps/level_2.glb#Scene0")]
+    pub level_2: Handle<Scene>,
     #[asset(path = "maps/level_3.glb#Scene0")]
     pub level_3: Handle<Scene>,
 }

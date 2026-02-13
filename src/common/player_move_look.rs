@@ -8,7 +8,6 @@ use bevy::prelude::*;
 use crate::common::AreaContent;
 use crate::common::GameLayer;
 use crate::common::GameplayState;
-use crate::common::LevelState;
 use crate::common::OverlayState;
 use crate::common::PlayerInput;
 use crate::common::Saveable;

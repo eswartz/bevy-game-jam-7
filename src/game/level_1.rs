@@ -5,11 +5,10 @@ use crate::game::*;
 use crate::common::*;
 
 use bevy::camera::visibility::RenderLayers;
-
 use bevy::prelude::*;
 
-pub(crate) const ID: &str = "level0";
-pub(crate) const NAME: &str = "Level 0";
+pub(crate) const ID: &str = "level1";
+pub(crate) const NAME: &str = "Level 1";
 
 pub struct LevelPlugin;
 
@@ -33,7 +32,7 @@ fn register_level(mut list: ResMut<LevelList>, maps: Res<MapAssets>) {
     list.0.push(LevelInfo {
         id: ID.to_string(),
         label: NAME.to_string(),
-        scene: maps.level_0.clone()
+        scene: maps.level_1.clone()
     });
 }
 

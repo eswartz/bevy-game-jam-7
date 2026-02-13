@@ -5,7 +5,6 @@ use crate::game::*;
 use crate::common::*;
 
 use bevy::camera::visibility::RenderLayers;
-use bevy_seedling::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 use rand::RngExt;
 
@@ -13,8 +12,8 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 use bevy_egui::input::egui_wants_any_keyboard_input;
 
-pub(crate) const ID: &str = "level3";
-pub(crate) const NAME: &str = "Level 3";
+pub(crate) const ID: &str = "level2";
+pub(crate) const NAME: &str = "Level 2";
 
 pub struct LevelPlugin;
 
@@ -48,7 +47,7 @@ fn register_level(mut list: ResMut<LevelList>, maps: Res<MapAssets>) {
     list.0.push(LevelInfo {
         id: ID.to_string(),
         label: NAME.to_string(),
-        scene: maps.level_3.clone()
+        scene: maps.level_2.clone()
     });
 }
 
@@ -56,15 +55,17 @@ fn on_level_loaded(
     mut commands: Commands,
     viewer_camera_q: Query<Entity, (With<Camera3d>, With<ViewerCamera>)>,
     models: Res<ModelAssets>,
+
 ) {
-    let net = commands.spawn((
+    let cam = viewer_camera_q.single().unwrap();
+    commands.spawn((
         Name::new("Net"),
         RenderLayers::layer(RENDER_LAYER_VIEW),
         SceneRoot(models.net.clone()),
-        Transform::from_xyz(0.0, 0.0, -1.0).with_scale(Vec3::splat(2.0)),
+        Transform::from_xyz(0.0, 0.0, -2.0).with_scale(Vec3::splat(2.0)),
         Visibility::Visible,
-    )).id();
-    commands.entity(viewer_camera_q.single().unwrap()).add_child(net);
+        ChildOf(cam),
+    ));
 
     commands.insert_resource(Spawning(false));
     commands.insert_resource(SpawnDelay(Duration::from_secs(1)));
@@ -72,32 +73,15 @@ fn on_level_loaded(
     commands.insert_resource(ShakeTime(Duration::ZERO));
 
     // commands.set_state(LevelState::LoadingSkybox);
-
 }
 
 fn check_actions(
     actions: Res<ActionState<UserAction>>,
-    fx: Res<FxAssets>,
     time: Res<Time<Physics>>,
     shake_q: Query<Entity, With<ShakingSound>>,
     mut shake_time: ResMut<ShakeTime>,
-    spawning: Res<Spawning>,
     mut commands: Commands,
 ) {
-    if actions.just_released(&UserAction::Interact) {
-        let new_state = !spawning.0;
-        let sample = if new_state {
-            fx.on.clone()
-        } else {
-            fx.off.clone()
-        };
-        commands.spawn((
-            UiSfx,
-            SamplePlayer::new(sample),
-        ));
-        commands.insert_resource(Spawning(new_state))
-    }
-
     let mut rng = rand::rng();
 
     // Shake the base with left/right/up/down.
@@ -113,15 +97,6 @@ fn check_actions(
     }
     if new_shake.length() > 0.0 {
         commands.insert_resource(ShakeRequest(new_shake * time.delta_secs()));
-
-        if shake_q.single().is_err() {
-            // Start sound.
-            commands.spawn((
-                UiSfx,
-                ShakingSound,
-                SamplePlayer::new(fx.sloshing.clone()),
-            ));
-        }
         shake_time.0 += time.delta();
     } else {
         // Remove sound after enough non-shaking.

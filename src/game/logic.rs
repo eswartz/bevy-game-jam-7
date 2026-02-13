@@ -10,7 +10,7 @@ use bevy_seedling::prelude::*;
 
 use avian3d::prelude::*;
 use bevy::prelude::*;
-use bevy_tweening::lens::TransformScaleLens;
+use bevy_tweening::lens::{TransformPositionLens, TransformScaleLens};
 use bevy_tweening::*;
 use rand::RngExt as _;
 use rand::seq::IndexedRandom as _;
@@ -34,11 +34,13 @@ impl Plugin for LogicPlugin {
                 (
                     check_ball_catch,
                     check_ball_loss,
+                    check_player_out_of_bounds,
                 )
                 .before(TransformSystems::Propagate)
                 .after(PhysicsSystems::Writeback)
                 .run_if(resource_exists::<CurrentScore>)
                 .run_if(not(is_user_paused))
+                .run_if(in_state(LevelState::Playing))
                 .run_if(in_state(ProgramState::InGame)),
             )
             .add_systems(
@@ -200,9 +202,65 @@ pub(crate) fn shake_base(
     }
 }
 
+pub(crate) fn check_player_out_of_bounds(
+    mut commands: Commands,
+    parent_q: Query<&ChildOf>,
+    player_q: Query<&Transform, With<Player>>,
+    scene_q: Query<&SceneRoot>,
+    sensor_q: Query<&CollidingEntities, With<DeathboxCollider>>,
+    player_start_q: Query<&Transform, With<PlayerStart>>,
+    fx: Res<FxAssets>,
+) {
+    let mut rng = rand::rng();
+    for coll in sensor_q.iter() {
+        for ent in coll.iter() {
+            let mut parent = *ent;
+            loop {
+                if let Ok(xfrm) = player_q.get(parent) {
+                    commands.spawn((
+                        UiSfx,
+                        SamplePlayer::new(
+                            (*[&fx.loss]
+                                .choose(&mut rng)
+                                .unwrap())
+                            .clone(),
+                        ),
+                        PlaybackSettings {
+                            speed: rng.random_range(0.9..1.1),
+                            ..default()
+                        },
+                        VolumeNode::from_linear(rng.random_range(0.85..1.0)),
+                    ));
+
+                    let xfrm_tween = Tween::new(
+                        EaseMethod::EaseFunction(EaseFunction::BackOut),
+                        Duration::from_secs_f32(1.0),
+                        TransformPositionLens {
+                            start: xfrm.translation,
+                            end: player_start_q.single().unwrap().translation,
+                        }
+                    );
+                    commands.entity(*ent).try_insert((
+                        TweenAnim::new(xfrm_tween).with_destroy_on_completed(true),
+                    ));
+
+                    break;
+                }
+                if scene_q.contains(parent) {
+                    break;
+                }
+                if let Ok(parent0) = parent_q.get(parent) {
+                    parent = parent0.0;
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+}
+
 pub(crate) fn check_ball_loss(
     mut commands: Commands,
-    level_state: Res<State<LevelState>>,
     parent_q: Query<&ChildOf>,
     spawned_q: Query<&Spawned, Without<Ignored>>,
     scoreable_q: Query<&Scoreable>,
@@ -220,8 +278,7 @@ pub(crate) fn check_ball_loss(
             let mut parent = *ent;
             loop {
                 if spawned_q.contains(parent) {
-                    if *level_state.get() == LevelState::Playing
-                    && let Ok(scoreable) = scoreable_q.get(parent) {
+                    if let Ok(scoreable) = scoreable_q.get(parent) {
                         score.score -= scoreable.lose as i32;
 
                         commands.spawn((
@@ -278,7 +335,6 @@ pub(crate) fn check_ball_loss(
 pub(crate) fn check_ball_catch(
     mut reader: MessageReader<CollisionEnd>,
     mut commands: Commands,
-    level_state: Res<State<LevelState>>,
     net_q: Query<Entity, With<NetCollider>>,
     spawned_q: Query<(Entity, &Transform, &GlobalTransform), (With<Spawned>, Without<Ignored>)>, // toplevel
     scoreable_q: Query<&Scoreable>,
@@ -306,8 +362,7 @@ pub(crate) fn check_ball_catch(
                     ball_xfrm = Some(xfrm);
                     ball_gxfrm = Some(gxfrm);
 
-                    if *level_state.get() == LevelState::Playing
-                    && let Ok(scoreable) = scoreable_q.get(parent) {
+                    if let Ok(scoreable) = scoreable_q.get(parent) {
                         score.score += scoreable.gain as i32;
 
                         commands.spawn((

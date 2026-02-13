@@ -1,6 +1,8 @@
 
 mod logic;
 mod level_0;
+mod level_1;
+mod level_2;
 mod level_3;
 
 use bevy::color::palettes::tailwind;
@@ -34,8 +36,10 @@ impl Plugin for GamePlugin {
             .insert_resource(LevelList(default()))
             .insert_resource(LevelIndex(0))
 
-            .add_plugins(level_0::Level0Plugin)
-            .add_plugins(level_3::Level3Plugin)
+            .add_plugins(level_0::LevelPlugin)
+            .add_plugins(level_1::LevelPlugin)
+            .add_plugins(level_2::LevelPlugin)
+            .add_plugins(level_3::LevelPlugin)
 
             .insert_resource(BaseEntity(Entity::PLACEHOLDER, Transform::IDENTITY))
 
