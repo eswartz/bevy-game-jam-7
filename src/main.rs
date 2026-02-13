@@ -157,11 +157,13 @@ fn main() -> AppExit {
         .insert_resource(PlayerInputSettings::for_space())
 
         .add_loading_state(
-                LoadingState::new(GameplayState::AssetsLoading)
-                    .continue_to_state(GameplayState::AssetsLoaded)
-                    .on_failure_continue_to_state(GameplayState::Done)
-                    .load_collection::<SkyboxAssets>()
-            )
+            LoadingState::new(ProgramState::Initializing)
+                .continue_to_state(ProgramState::New)
+                .on_failure_continue_to_state(ProgramState::Error)
+                .load_collection::<SkyboxAssets>()
+                .load_collection::<MapAssets>()
+                .load_collection::<ModelAssets>()
+        )
 
         .add_systems(OnEnter(ProgramState::Initializing), on_enter_initializing)
         .add_systems(

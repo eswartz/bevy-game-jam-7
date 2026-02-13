@@ -68,99 +68,97 @@ pub fn apply_effect_settings(
         return;
     }
 
-    let Ok((camera_ent, mut cam3d)) = camera_q.single_mut() else {
-        return
-    };
-
     info!("Setting up effects");
-    let mut ent_commands = commands.entity(camera_ent);
-    ent_commands.remove::<Msaa>();
-    ent_commands.remove::<ScreenSpaceAmbientOcclusion>();
-    ent_commands.remove::<TemporalAntiAliasing>();
-    ent_commands.remove::<Bloom>();
+    for (camera_ent, mut cam3d) in camera_q.iter_mut() {
+        let mut ent_commands = commands.entity(camera_ent);
+        ent_commands.remove::<Msaa>();
+        ent_commands.remove::<ScreenSpaceAmbientOcclusion>();
+        ent_commands.remove::<TemporalAntiAliasing>();
+        ent_commands.remove::<Bloom>();
 
-    ent_commands.insert((
-        // Tonemapping::BlenderFilmic,
-        Tonemapping::TonyMcMapface,
-        // Bloom {
-        //     intensity: -1.0,
-        //     low_frequency_boost: 1.0,
-        //     low_frequency_boost_curvature: 0.0,
-        //     high_pass_frequency: 1.0,
-        //     ..default()
-        // },
-        Bloom {
-            intensity: -2.0,
-            low_frequency_boost: 2.0,
-            low_frequency_boost_curvature: 0.25,
-            high_pass_frequency: 1.0,
-            scale: Vec2::new(0.5, 1.0),
-            ..default()
-        },
-        // Bloom::NATURAL,
-        ColorGrading {
-            global: ColorGradingGlobal {
-                // exposure: 1.25,
-                exposure: 1.0,
-                post_saturation: 1.5,
+        ent_commands.insert((
+            // Tonemapping::BlenderFilmic,
+            Tonemapping::TonyMcMapface,
+            // Bloom {
+            //     intensity: -1.0,
+            //     low_frequency_boost: 1.0,
+            //     low_frequency_boost_curvature: 0.0,
+            //     high_pass_frequency: 1.0,
+            //     ..default()
+            // },
+            Bloom {
+                intensity: -2.0,
+                low_frequency_boost: 2.0,
+                low_frequency_boost_curvature: 0.25,
+                high_pass_frequency: 1.0,
+                scale: Vec2::new(0.5, 1.0),
                 ..default()
             },
-            shadows: ColorGradingSection {
-                lift: -0.005,
-                ..default()
-            },
-            midtones: ColorGradingSection::default(),
-            highlights: ColorGradingSection {
-                lift: -0.005,
-                ..default()
-            }
-        },
-    ));
-
-    match video_settings.antialiasing {
-        Antialiasing::Off => {
-            ent_commands.remove::<(ScreenSpaceAmbientOcclusion, TemporalAntiAliasing)>();
-
-            ent_commands.insert((
-                Msaa::Off,
-            ));
-        },
-        Antialiasing::TSAA => {
-            ent_commands.insert((
-                Msaa::Off,
-                ScreenSpaceAmbientOcclusion {
-                    quality_level: ScreenSpaceAmbientOcclusionQualityLevel::Medium,
+            // Bloom::NATURAL,
+            ColorGrading {
+                global: ColorGradingGlobal {
+                    // exposure: 1.25,
+                    exposure: 1.0,
+                    post_saturation: 1.5,
                     ..default()
                 },
-                TemporalAntiAliasing::default(),
-            ));
-        }
-        // Antialiasing::MSAA => {
-        //     ent_commands.remove::<(Msaa, ScreenSpaceAmbientOcclusion, TemporalAntiAliasing)>();
-        //     // ent_commands.insert(Msaa::Sample4);
-        // }
-    }
+                shadows: ColorGradingSection {
+                    lift: -0.005,
+                    ..default()
+                },
+                midtones: ColorGradingSection::default(),
+                highlights: ColorGradingSection {
+                    lift: -0.005,
+                    ..default()
+                }
+            },
+        ));
 
-    match video_settings.glass_quality {
-        GlassQuality::Off => {
-            cam3d.screen_space_specular_transmission_steps = 0;
-            cam3d.screen_space_specular_transmission_quality = ScreenSpaceTransmissionQuality::Low;
+        match video_settings.antialiasing {
+            Antialiasing::Off => {
+                ent_commands.remove::<(ScreenSpaceAmbientOcclusion, TemporalAntiAliasing)>();
+
+                ent_commands.insert((
+                    Msaa::Off,
+                ));
+            },
+            Antialiasing::TSAA => {
+                ent_commands.insert((
+                    Msaa::Off,
+                    ScreenSpaceAmbientOcclusion {
+                        quality_level: ScreenSpaceAmbientOcclusionQualityLevel::Medium,
+                        ..default()
+                    },
+                    TemporalAntiAliasing::default(),
+                ));
+            }
+            // Antialiasing::MSAA => {
+            //     ent_commands.remove::<(Msaa, ScreenSpaceAmbientOcclusion, TemporalAntiAliasing)>();
+            //     // ent_commands.insert(Msaa::Sample4);
+            // }
         }
-        GlassQuality::Low => {
-            cam3d.screen_space_specular_transmission_steps = 1;
-            cam3d.screen_space_specular_transmission_quality = ScreenSpaceTransmissionQuality::Low;
-        }
-        GlassQuality::Medium => {
-            cam3d.screen_space_specular_transmission_steps = 1;
-            cam3d.screen_space_specular_transmission_quality = ScreenSpaceTransmissionQuality::Medium;
-        }
-        GlassQuality::High => {
-            cam3d.screen_space_specular_transmission_steps = 2;
-            cam3d.screen_space_specular_transmission_quality = ScreenSpaceTransmissionQuality::High;
-        }
-        GlassQuality::Ultra => {
-            cam3d.screen_space_specular_transmission_steps = 3;
-            cam3d.screen_space_specular_transmission_quality = ScreenSpaceTransmissionQuality::Ultra;
+
+        match video_settings.glass_quality {
+            GlassQuality::Off => {
+                cam3d.screen_space_specular_transmission_steps = 0;
+                cam3d.screen_space_specular_transmission_quality = ScreenSpaceTransmissionQuality::Low;
+            }
+            GlassQuality::Low => {
+                cam3d.screen_space_specular_transmission_steps = 1;
+                cam3d.screen_space_specular_transmission_quality = ScreenSpaceTransmissionQuality::Low;
+            }
+            GlassQuality::Medium => {
+                cam3d.screen_space_specular_transmission_steps = 1;
+                cam3d.screen_space_specular_transmission_quality = ScreenSpaceTransmissionQuality::Medium;
+            }
+            GlassQuality::High => {
+                cam3d.screen_space_specular_transmission_steps = 2;
+                cam3d.screen_space_specular_transmission_quality = ScreenSpaceTransmissionQuality::High;
+            }
+            GlassQuality::Ultra => {
+                cam3d.screen_space_specular_transmission_steps = 3;
+                cam3d.screen_space_specular_transmission_quality = ScreenSpaceTransmissionQuality::Ultra;
+            }
         }
     }
 

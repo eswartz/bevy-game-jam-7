@@ -9,14 +9,11 @@ pub use logic::*;
 
 use std::time::Duration;
 
-use crate::{assets::*};
 use crate::player_spawning::spawn_player;
 use crate::common::*;
 
 use bevy::asset::uuid::Uuid;
 use bevy::ecs::world::CommandQueue;
-use bevy_asset_loader::loading_state::LoadingStateAppExt as _;
-use bevy_asset_loader::loading_state::config::{ConfigureLoadingState as _, LoadingStateConfig};
 use bevy_seedling::prelude::*;
 
 use avian3d::prelude::*;
@@ -33,6 +30,7 @@ impl Plugin for GamePlugin {
             .add_plugins(LogicPlugin)
 
             .insert_resource(LevelList(default()))
+            .insert_resource(LevelIndex(0))
 
             .add_plugins(level_0::Level0Plugin)
             .add_plugins(level_3::Level3Plugin)
@@ -41,31 +39,22 @@ impl Plugin for GamePlugin {
 
             .add_observer(observe_spawn_mesh)
 
-            .configure_loading_state(
-                LoadingStateConfig::new(ProgramState::Initializing)
-                    .load_collection::<MapAssets>()
-                    .load_collection::<ModelAssets>()
-            )
-
             .add_systems(
-                OnExit(GameplayState::AssetsLoaded),
-                ensure_first_level
+                OnExit(ProgramState::New),
+                ensure_levels
             )
-
             .add_systems(
                 OnEnter(GameplayState::Setup),
                 (
                     level_spawn_started,
                     spawn_level,
                 ).chain()
-                // .run_if(in_state(ProgramState::InGame)) // redundant
             )
             .add_systems(
                 OnExit(GameplayState::Setup),
                 (
                     level_spawn_finished,
                 ).chain()
-                // .run_if(in_state(ProgramState::InGame)) // redundant
             )
             .add_systems(
                 Update,
@@ -155,6 +144,11 @@ pub fn is_in_level(id: &str) -> impl Fn(Option<Res<CurrentLevel>>) -> bool {
 #[reflect(Resource)]
 #[type_path = "game"]
 pub struct CurrentLevel(pub LevelInfo);
+
+/// The level index into [LevelList].
+#[derive(Resource, Default, Reflect)]
+#[reflect(Resource, Default)]
+pub struct LevelIndex(pub usize);
 
 /// The current score.
 #[derive(Resource, Reflect, Default, Debug)]
@@ -309,6 +303,10 @@ fn observe_spawn_mesh(
     }
 }
 
+pub(crate) fn ensure_levels(mut level_list: ResMut<LevelList>) {
+    level_list.0.sort_by(|a, b| a.id.cmp(&b.id));
+}
+
 pub(crate) fn level_spawn_started(mut commands: Commands, mut pause: ResMut<PauseState>) {
     commands.set_state(LevelState::Initializing);
     commands.set_state(OverlayState::Loading);
@@ -373,32 +371,31 @@ pub(crate) fn spawn_player_on_start(world: &mut World) {
     queue.apply(world);
 }
 
-pub(crate) fn ensure_first_level(
-    mut commands: Commands,
-    list: Res<LevelList>,
-) {
-    let Some(first) = list.0.first() else {
-        log::error!("no items in LevelList");
-        commands.remove_resource::<CurrentLevel>();
-        return;
-    };
-
-    commands.insert_resource(CurrentLevel(first.clone()));
-}
-
 pub(crate) fn spawn_level(
     mut commands: Commands,
-    level: Res<CurrentLevel>,
+    level_list: Res<LevelList>,
+    level_index: Res<LevelIndex>,
     world: Res<WorldMarkerEntity>,
     mut score_q: Query<&mut Text, (With<ScoreArea>, Without<GameStatusArea>)>,
     mut status_q: Query<&mut Text, (With<GameStatusArea>, Without<ScoreArea>)>,
 ) {
-    log::info!("Entering level {}", level.0.label);
+    let index = level_index.0;
+    if index >= level_list.0.len() {
+        log::error!("no items in LevelList");
+        commands.remove_resource::<CurrentLevel>();
+        commands.set_state(ProgramState::Error);
+        return;
+    }
+
+    let level = &level_list.0[level_index.0];
+    commands.insert_resource(CurrentLevel(level.clone()));
+
+    log::info!("Entering level {}", level.label);
 
     commands
         .spawn((
             DespawnOnExit(GameplayState::Playing),
-            SceneRoot(level.0.scene.clone()),
+            SceneRoot(level.scene.clone()),
             ChildOf(world.0),
         ))
         .observe(|_event: On<SceneInstanceReady>, mut commands: Commands,| {
@@ -503,29 +500,23 @@ fn check_won_level(
     mut commands: Commands,
     mut end_timer: ResMut<AutoEndLevelTimer>,
     time: Res<Time<Physics>>,
-    level_info: Res<CurrentLevel>,
+    level_index: ResMut<LevelIndex>,
     level_list: Res<LevelList>,
 ) {
     if !end_timer.0.tick(time.delta()).is_finished() {
         return;
     }
 
-    if let Some(current_index) = level_list.0.iter().position(|x| *x == level_info.0) {
-        let next_index = current_index + 1;
-        if next_index >= level_list.0.len() {
-            commands.remove_resource::<CurrentLevel>();
-            commands.set_state(ProgramState::Completed);
-            commands.set_state(LevelState::Initializing);
-            commands.set_state(GameplayState::Done);
-            commands.set_state(OverlayState::GameOverScreen);
-        } else {
-            commands.insert_resource(CurrentLevel(level_list.0[next_index].clone()));
-            commands.set_state(LevelState::Advance);
-        }
+    let next_index = level_index.0 + 1;
+    if next_index >= level_list.0.len() {
+        commands.set_state(ProgramState::Completed);
+        commands.set_state(LevelState::Initializing);
+        commands.set_state(GameplayState::Done);
+        commands.set_state(OverlayState::GameOverScreen);
     } else {
-        log::error!("current level not found!");
+        commands.insert_resource(LevelIndex(next_index));
         commands.set_state(LevelState::Advance);
-    };
+    }
 }
 
 fn check_lost_level(

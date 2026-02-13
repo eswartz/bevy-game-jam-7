@@ -94,9 +94,6 @@ pub enum GameplayState {
     /// This is used to distinguish from New -> ... transitions.
     /// This only runs once per process.
     LoadingSave,
-    /// Loading the assets for the mode.
-    /// /// This only runs once per process.
-    AssetsLoading,
     /// Assets for the mode are loaded; continue to the appropriate state.
     /// This only runs once per process.
     AssetsLoaded,

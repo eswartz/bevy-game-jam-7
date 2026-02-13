@@ -39,12 +39,6 @@ impl Plugin for WorldStatePlugin {
                 )
                 .chain()
             )
-            // .add_systems(
-            //     PreUpdate,
-            //     insert_skybox
-            //         .run_if(in_state(GameplayState::Setup))
-            //         .run_if(in_state(ProgramState::InGame))
-            // )
 
             .add_systems(OnEnter(LevelState::LoadingSkybox),
                 (
@@ -63,7 +57,6 @@ impl Plugin for WorldStatePlugin {
                     .chain()
                     .run_if(resource_exists::<SkyboxSetup>)
                     .run_if(in_state(ProgramState::InGame))
-                    // .run_if(in_state(GameplayState::Setup))
                     .run_if(in_state(LevelState::LoadingSkybox))
             )
         ;
@@ -142,12 +135,6 @@ pub struct PlayerStart;
 #[reflect(Component, Clone)]
 #[type_path = "game"]
 pub struct BackgroundAudio;
-
-/// When defined, requests to change to the given level by index.
-#[derive(Resource, Default, Reflect)]
-#[reflect(Resource, Default)]
-pub struct NextLevelIndex(pub usize);
-
 
 fn transition_from_loading(
     mut commands: Commands,

@@ -103,7 +103,6 @@ pub(crate) fn check_spawn_toggle(
 pub(crate) fn spawn_ball(
     mut commands: Commands,
     generator_q: Query<(Entity, &Transform), With<Generator>>,
-    listener_q: Query<&Transform, With<SpatialListener3D>>,
     scoreable_q: Single<&Scoreable, With<LevelRoot>>,
     world: Res<WorldMarkerEntity>,
     delay: Res<SpawnDelay>,
@@ -125,10 +124,6 @@ pub(crate) fn spawn_ball(
         return;
     }
 
-    // Fetch the spatializer location to avoid miscalculation.
-    // To avoid https://github.com/CorvusPrudens/bevy_seedling/issues/87
-    let spat_xfrm_opt = listener_q.iter().next();
-
     let mut rng = rand::rng();
 
     for (_ent, xfrm) in generator_q.iter() {
@@ -146,25 +141,13 @@ pub(crate) fn spawn_ball(
             Sfx,
             // Make into spatial sound.
             Transform::from_translation(xfrm.translation),
-            // To avoid https://github.com/CorvusPrudens/bevy_seedling/issues/87
-            sample_effects![SpatialBasicNode {
-                offset: (if let Some(spat_xfrm) = spat_xfrm_opt {
-                    spat_xfrm.translation - xfrm.translation
-                } else {
-                    Vec3::new(10.0, 10.0, 10.0)
-                })
-                .into(),
-                ..default()
-            }],
-            // Another workaround: choose one of a similar sound
-            // else the pool tends to get stuck and not play anything.
+            sample_effects![SpatialBasicNode::default()],
             SamplePlayer::new(
                 (*[&fx.belch_1, &fx.belch_2, &fx.belch_3]
                     .choose(&mut rng)
                     .unwrap())
                 .clone(),
             ),
-            // SamplePlayer::new(fx.tone.clone()),
             PlaybackSettings {
                 speed: rng.random_range(0.75..1.25),
                 ..default()
@@ -198,7 +181,7 @@ pub(crate) fn shake_base(
                 }
 
                 let size = match aabb_q.get(base.0) {
-                    Ok(base) => 500.0 * base.half_extents.x * base.half_extents.y * base.half_extents.z,
+                    Ok(base) => 100.0 * base.half_extents.x * base.half_extents.y * base.half_extents.z,
                     Err(_) => 10000.0
                 };
                 let force = shake.0 * size;

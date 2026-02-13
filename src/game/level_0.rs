@@ -22,7 +22,7 @@ impl Plugin for Level0Plugin {
     fn build(&self, app: &mut App) {
         app
             .add_systems(
-                OnEnter(GameplayState::AssetsLoading),
+                OnEnter(ProgramState::New),
                 register_level
             )
             .add_systems(

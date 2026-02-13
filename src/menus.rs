@@ -12,6 +12,7 @@ use crate::ExitRequest;
 use crate::assets::GuiAssets;
 use crate::common::*;
 use crate::game::LevelList;
+use crate::game::LevelIndex;
 
 pub struct MenuPlugin;
 impl Plugin for MenuPlugin {
@@ -61,26 +62,22 @@ impl MenuItemHandler for SimpleMenuActions {
                     commands.insert_resource(GoBackInMenuRequest);
                 }
                 SimpleMenuActions::PlayGame => {
+                    commands.insert_resource(LevelIndex(0));
                     start_game(commands.reborrow());
                 }
                 SimpleMenuActions::GameMenu => {
-                    // commands.set_state(OverlayState::GameMenu);
                     commands.insert_resource(GoIntoMenuRequest(OverlayState::GameMenu));
                 }
                 SimpleMenuActions::OptionsMenu => {
-                    // commands.set_state(OverlayState::OptionsMenu);
                     commands.insert_resource(GoIntoMenuRequest(OverlayState::OptionsMenu));
                 }
                 SimpleMenuActions::AudioMenu => {
-                    // commands.set_state(OverlayState::AudioMenu);
                     commands.insert_resource(GoIntoMenuRequest(OverlayState::AudioMenu));
                 }
                 SimpleMenuActions::VideoMenu => {
-                    // commands.set_state(OverlayState::VideoMenu);
                     commands.insert_resource(GoIntoMenuRequest(OverlayState::VideoMenu));
                 }
                 SimpleMenuActions::ControlsMenu => {
-                    // commands.set_state(OverlayState::ControlsMenu);
                     commands.insert_resource(GoIntoMenuRequest(OverlayState::ControlsMenu));
                 }
                 SimpleMenuActions::Quit => {
@@ -153,7 +150,7 @@ fn on_enter_main_menu(
         &history,
     )
     .add_item("Play", (), SimpleMenuActions::PlayGame)
-    // .add_item("Game", (), SimpleMenuActions::GameMenu)
+    .add_item("Game", (), SimpleMenuActions::GameMenu)
     .add_item("Options", (), SimpleMenuActions::OptionsMenu)
     .add_item("Quit", (), SimpleMenuActions::Quit)
     .finish(&mut history);
@@ -180,45 +177,45 @@ fn on_enter_main_menu(
 fn on_enter_game_menu(
     fonts: Res<GuiAssets>,
     program_state: Res<State<ProgramState>>,
-    /*mut*/ commands: Commands,
+    mut commands: Commands,
     mut history: ResMut<MenuItemSelectionHistory>,
-    // level_regy: Res<LevelRegistry>,
+    level_list: Res<LevelList>,
 ) {
-    macro_rules! make_res_enum_getter_setter {
-        ($getter:ident $setter:ident => $enum:ident $res:ident $field:tt) => {
-            let $getter = commands.register_system(IntoSystem::into_system(
-                |In(entity): In<Entity>, mut enum_q: Query<&mut MenuEnum>, res: Res<$res>| {
-                    enum_q.get_mut(entity).unwrap().current = Some(
-                        $enum::VARIANTS
-                            .iter()
-                            .position(|e| *e == res.$field)
-                            .unwrap(),
-                    );
-                },
-            ));
-            let $setter = commands.register_system(IntoSystem::into_system(
-                |In(v): In<usize>, mut res: ResMut<$res>| {
-                    res.$field = $enum::VARIANTS[v];
-                },
-            ));
-        };
-    }
+    // macro_rules! make_res_enum_getter_setter {
+    //     ($getter:ident $setter:ident => $enum:ident $res:ident $field:tt) => {
+    //         let $getter = commands.register_system(IntoSystem::into_system(
+    //             |In(entity): In<Entity>, mut enum_q: Query<&mut MenuEnum>, res: Res<$res>| {
+    //                 enum_q.get_mut(entity).unwrap().current = Some(
+    //                     $enum::VARIANTS
+    //                         .iter()
+    //                         .position(|e| *e == res.$field)
+    //                         .unwrap(),
+    //                 );
+    //             },
+    //         ));
+    //         let $setter = commands.register_system(IntoSystem::into_system(
+    //             |In(v): In<usize>, mut res: ResMut<$res>| {
+    //                 res.$field = $enum::VARIANTS[v];
+    //             },
+    //         ));
+    //     };
+    // }
 
     // make_res_enum_getter_setter!(get_difficulty set_difficulty => Difficulty LevelDifficulty 0);
 
-    // fn get_level(In(entity): In<Entity>, mut enum_q: Query<&mut MenuEnum>, next_level_index: Option<Res<NextLevelIndex>>) {
-    //     let index = next_level_index.map_or(0, |nli| nli.0);
-    //     enum_q.get_mut(entity).unwrap().current = Some(index);
-    // }
-    // fn set_level(In(v): In<usize>, mut commands: Commands) {
-    //     commands.insert_resource(NextLevelIndex(v));
-    // }
-    // let get_level = commands.register_system(IntoSystem::into_system(get_level));
-    // let set_level = commands.register_system(IntoSystem::into_system(set_level));
+    fn get_level(In(entity): In<Entity>, mut enum_q: Query<&mut MenuEnum>, next_level_index: Option<Res<LevelIndex>>) {
+        let index = next_level_index.map_or(0, |nli| nli.0);
+        enum_q.get_mut(entity).unwrap().current = Some(index);
+    }
+    fn set_level(In(v): In<usize>, mut commands: Commands) {
+        commands.insert_resource(LevelIndex(v));
+    }
+    let get_level = commands.register_system(IntoSystem::into_system(get_level));
+    let set_level = commands.register_system(IntoSystem::into_system(set_level));
 
-    // let level_ids = level_regy.get_level_ids();
-    // let level_count = level_ids.len();
-    // let level_names = level_ids.iter().map(|id| level_regy.level_name(id)).collect::<Vec<_>>();
+    let level_infos = &level_list.0;
+    let level_count = level_infos.len();
+    let level_names = level_infos.iter().map(|info| info.label.clone()).collect::<Vec<_>>();
 
     MenuItemBuilder::new(
         commands,
@@ -228,16 +225,16 @@ fn on_enter_game_menu(
         1.0,
         &history,
     )
-    // .add_item(
-    //     "Level",
-    //     MenuEnum::new(
-    //         get_level,
-    //         set_level,
-    //         move || level_count,
-    //         move |index| level_names[index].clone(),
-    //     ),
-    //     EnumMenuActions::SelectStartLevelEnum,
-    // )
+    .add_item(
+        "Level",
+        MenuEnum::new(
+            get_level,
+            set_level,
+            move || level_count,
+            move |index| level_names[index].clone(),
+        ),
+        EnumMenuActions::SelectStartLevelEnum,
+    )
     // .add_item(
     //     "Difficulty",
     //     MenuEnum::new(
@@ -294,7 +291,7 @@ fn on_enter_escape_menu(
     .add_item("Video", (), SimpleMenuActions::VideoMenu)
     .add_item("Controls", (), SimpleMenuActions::ControlsMenu)
     .add_item("Stop", (), SimpleMenuActions::StopGame)
-    .add_item("Back", (), SimpleMenuActions::Back)
+    .add_item("Resume", (), SimpleMenuActions::ResumeGame)
     .finish(&mut history);
 }
 
@@ -316,7 +313,7 @@ impl MenuItemHandler for SliderMenuActions {}
 
 #[derive(Debug, Clone)]
 pub(crate) enum EnumMenuActions {
-    DifficultyEnum,
+    // DifficultyEnum,
     SelectStartLevelEnum,
     AntialiasingEnum,
     MeshQualityEnum,
@@ -343,7 +340,7 @@ pub(crate) enum VolumeMenuActions {
     MusicVolumeSlider,
     EffectsVolumeSlider,
     UiVolumeSlider,
-    AmbientVolumeSlider,
+    // AmbientVolumeSlider,
 }
 
 impl MenuItemHandler for VolumeMenuActions {}
@@ -352,7 +349,6 @@ fn on_enter_audio_menu(
     fonts: Res<GuiAssets>,
     mut commands: Commands,
     program_state: Res<State<ProgramState>>,
-    overlay_state: Res<State<OverlayState>>,
     mut history: ResMut<MenuItemSelectionHistory>,
     // mut master_vol_q: Single<&mut UserVolume, With<MainBus>>,
     // mut music_vol_q: Single<&mut UserVolume, With<SamplerPool<Music>>>,
@@ -740,9 +736,8 @@ fn on_enter_video_menu(
 }
 
 fn start_game(mut commands: Commands) {
-    commands.insert_resource(LevelList::default());
     commands.set_state(OverlayState::Loading);
     commands.set_state(ProgramState::InGame);
-    commands.set_state(GameplayState::AssetsLoading);
+    commands.set_state(GameplayState::AssetsLoaded);
     // commands.insert_resource(ConnectToServer);
 }
