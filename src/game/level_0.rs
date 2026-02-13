@@ -80,7 +80,6 @@ fn on_level_loaded(
     commands.insert_resource(Spawning(false));
     commands.insert_resource(SpawnDelay(Duration::from_secs(1)));
     commands.insert_resource(SpawnTimer(Timer::new(Duration::from_secs(1), TimerMode::Repeating)));
-    commands.insert_resource(ShakeRequest(Vec3::ZERO));
     commands.insert_resource(ShakeTime(Duration::ZERO));
 
     // commands.set_state(LevelState::Playing);
@@ -110,7 +109,6 @@ fn on_level_loaded(
 
 fn check_actions(
     actions: Res<ActionState<UserAction>>,
-    fx: Res<FxAssets>,
     time: Res<Time<Physics>>,
     shake_q: Query<Entity, With<ShakingSound>>,
     mut shake_time: ResMut<ShakeTime>,
@@ -131,15 +129,6 @@ fn check_actions(
     }
     if new_shake.length() > 0.0 {
         commands.insert_resource(ShakeRequest(new_shake * time.delta_secs()));
-
-        if shake_q.single().is_err() {
-            // Start sound.
-            commands.spawn((
-                UiSfx,
-                ShakingSound,
-                SamplePlayer::new(fx.sloshing.clone()),
-            ));
-        }
         shake_time.0 += time.delta();
     } else {
         // Remove sound after enough non-shaking.

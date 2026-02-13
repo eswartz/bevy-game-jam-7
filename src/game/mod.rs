@@ -38,7 +38,7 @@ impl Plugin for GamePlugin {
             .add_plugins(level_0::Level0Plugin)
             .add_plugins(level_3::Level3Plugin)
 
-            .insert_resource(Base(Entity::PLACEHOLDER, Transform::IDENTITY))
+            .insert_resource(BaseEntity(Entity::PLACEHOLDER, Transform::IDENTITY))
 
             .add_observer(observe_spawn_mesh)
 
@@ -209,24 +209,23 @@ pub(crate) struct Scoreable {
 #[type_path = "game"]
 pub(crate) struct Generator;
 
-/// Marker (in .glb) for a generator switch collider.
-#[derive(Component, Reflect)]
-#[reflect(Component)]
-#[type_path = "game"]
-pub(crate) struct GeneratorSwitchCollider;
-
 /// Marker for things we spawned.
 #[derive(Component, Reflect, Default)]
 #[reflect(Component, Default)]
 #[type_path = "game"]
 pub(crate) struct Spawned;
 
-/// Our "base" object and its initial transform.
-#[derive(Resource, Reflect)]
-#[reflect(Resource)]
+/// Marker (in .glb) for the base box.
+#[derive(Component, Reflect)]
+#[reflect(Component)]
 #[type_path = "game"]
-pub(crate) struct Base(pub Entity, pub Transform);
+pub(crate) struct BaseMarker;
 
+/// Marker (in .glb) for a generator switch collider.
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+#[type_path = "game"]
+pub(crate) struct GeneratorSwitchCollider;
 
 /// Marker (in .glb) for the death box.
 #[derive(Component, Reflect)]
@@ -245,6 +244,12 @@ pub(crate) struct NetCollider;
 #[reflect(Component)]
 #[type_path = "game"]
 pub(crate) struct ConsumerCollider;
+
+/// Our "base" object and its initial transform.
+#[derive(Resource, Reflect)]
+#[reflect(Resource)]
+#[type_path = "game"]
+pub(crate) struct BaseEntity(pub Entity, pub Transform);
 
 /// Is spawning active?
 #[derive(Resource, Reflect, Default)]
@@ -279,10 +284,8 @@ fn observe_spawn_mesh(
     ready: On<SceneInstanceReady>,
     children: Query<&Children>,
     names: Query<&Name>,
-    gltf_names: Query<&GltfMeshName>,
     meshes: Query<&Mesh3d>,
     parent: Query<&ChildOf>,
-    xfrms: Query<&Transform>,
     mut commands: Commands,
 ) {
     for entity in children.iter_descendants(ready.entity) {
@@ -322,13 +325,6 @@ fn observe_spawn_mesh(
                     .entity(entity)
                     .insert(ColliderConstructor::TrimeshFromMesh);
             }
-
-            if let Ok(gltf_name) = gltf_names.get(entity) {
-                // dbg!(gltf_name);
-                if gltf_name.0.eq_ignore_ascii_case("BaseX") {
-                    commands.insert_resource(Base(entity, xfrms.get(entity).unwrap().clone()))
-                }
-            }
         }
     }
 }
@@ -347,6 +343,7 @@ pub(crate) fn level_spawn_finished(
         With<GeneratorSwitchCollider>,
         With<ConsumerCollider>,
     )>>,
+    base_q: Query<(Entity, &Transform), With<BaseMarker>>,
 ) {
     for ent in sensable_q.iter() {
         commands.entity(ent).insert((
@@ -354,6 +351,12 @@ pub(crate) fn level_spawn_finished(
             CollisionEventsEnabled,
         ));
     }
+    if let Some((ent, xfrm)) = base_q.iter().next() {
+        commands.insert_resource(BaseEntity(ent, xfrm.clone()));
+    } else {
+        commands.remove_resource::<BaseEntity>();
+    }
+
     commands.set_state(OverlayState::Hidden);
     commands.set_state(LevelState::LevelLoaded);
     pause.set_menu_paused(false);
@@ -367,13 +370,6 @@ fn added_player_start(q: Query<&Transform, Added<PlayerStart>>) -> bool {
 pub(crate) fn spawn_player_on_start(world: &mut World) {
     // Make the player collision model and Player
     let player_ent = spawn_player(world, Uuid::default());
-
-    // let mut camera_q = world.query_filtered::<Entity, (With<Camera3d>, With<ViewerCamera>)>();
-    // let Ok(cam_ent) = camera_q.single(world) else {
-    //     log::error!("no single PlayerStart or OurPlayer");
-    //     return;
-    // };
-    // drop(camera_q);
 
     // Move to start position/orientation.
     let mut start_q = world.query_filtered::<&Transform, With<PlayerStart>>();
@@ -392,10 +388,6 @@ pub(crate) fn spawn_player_on_start(world: &mut World) {
         PlayerLook { rotation: xfrm.rotation, .. default() },
         xfrm
     ));
-
-    // // Move view camera inside player.
-    // commands.entity(cam_ent).insert(ChildOf(player_ent));
-
 
     queue.apply(world);
 }

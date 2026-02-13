@@ -69,7 +69,6 @@ fn on_level_loaded(
     commands.insert_resource(Spawning(false));
     commands.insert_resource(SpawnDelay(Duration::from_secs(1)));
     commands.insert_resource(SpawnTimer(Timer::new(Duration::from_secs(1), TimerMode::Repeating)));
-    commands.insert_resource(ShakeRequest(Vec3::ZERO));
     commands.insert_resource(ShakeTime(Duration::ZERO));
 
     commands.set_state(LevelState::Playing);

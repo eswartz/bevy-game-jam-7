@@ -4,6 +4,7 @@ use crate::{assets::*};
 use crate::game::*;
 use crate::common::*;
 
+use bevy::camera::primitives::Aabb;
 use bevy_seedling::sample::PlaybackSettings;
 use bevy_seedling::prelude::*;
 
@@ -43,7 +44,7 @@ impl Plugin for LogicPlugin {
             .add_systems(
                 FixedUpdate,
                 (
-                    shake_base,
+                    shake_base.run_if(resource_exists::<BaseEntity>),
                     spawn_ball,
                 )
                 .run_if(not(is_paused))
@@ -174,9 +175,12 @@ pub(crate) fn spawn_ball(
 }
 
 pub(crate) fn shake_base(
-    base: Res<Base>,
+    base: Res<BaseEntity>,
     shake: Option<Res<ShakeRequest>>,
     camera: Query<&GlobalTransform, (With<Camera3d>, With<WorldCamera>)>,
+    shake_q: Query<Entity, With<ShakingSound>>,
+    aabb_q: Query<&Aabb>,
+    fx: Res<FxAssets>,
     mut commands: Commands,
     mut forces: Query<(&Transform, Forces)>,
 ) {
@@ -184,10 +188,22 @@ pub(crate) fn shake_base(
         if let Some(shake) = shake {
             // Apply shake.
             if let Ok(xfrm) = camera.single() {
-                let force = shake.0 * 10000.0;
+                if shake_q.single().is_err() {
+                    // Start sound.
+                    commands.spawn((
+                        UiSfx,
+                        ShakingSound,
+                        SamplePlayer::new(fx.sloshing.clone()),
+                    ));
+                }
+
+                let size = match aabb_q.get(base.0) {
+                    Ok(base) => 500.0 * base.half_extents.x * base.half_extents.y * base.half_extents.z,
+                    Err(_) => 10000.0
+                };
+                let force = shake.0 * size;
                 forces.apply_local_linear_impulse(xfrm.rotation() * force);
                 commands.remove_resource::<ShakeRequest>();
-
             }
         } else {
             // Come to rest.
