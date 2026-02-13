@@ -172,6 +172,16 @@ pub struct AutoEndLevelTimer(pub(crate) Timer);
 #[type_path = "game"]
 pub(crate) struct LevelRoot;
 
+#[derive(Component, Clone, Reflect)]
+#[reflect(Component, Clone)]
+#[type_path = "game"]
+pub enum CameraEffects {
+    Normal,
+    Mode1,
+    Mode2,
+}
+
+
 /// Marker for things that give a score.
 /// The [LevelRoot] is expected to have this.
 #[derive(Component, Reflect, Default)]

@@ -2,14 +2,8 @@ use bevy::camera::ScreenSpaceTransmissionQuality;
 use bevy::prelude::*;
 
 use bevy::anti_alias::taa::TemporalAntiAliasing;
-use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::pbr::ScreenSpaceAmbientOcclusion;
 use bevy::pbr::ScreenSpaceAmbientOcclusionQualityLevel;
-use bevy::post_process::bloom::Bloom;
-
-use bevy::render::view::ColorGrading;
-use bevy::render::view::ColorGradingGlobal;
-use bevy::render::view::ColorGradingSection;
 
 use crate::common::WorldCamera;
 
@@ -74,45 +68,6 @@ pub fn apply_effect_settings(
         ent_commands.remove::<Msaa>();
         ent_commands.remove::<ScreenSpaceAmbientOcclusion>();
         ent_commands.remove::<TemporalAntiAliasing>();
-        ent_commands.remove::<Bloom>();
-
-        ent_commands.insert((
-            // Tonemapping::BlenderFilmic,
-            Tonemapping::TonyMcMapface,
-            // Bloom {
-            //     intensity: -1.0,
-            //     low_frequency_boost: 1.0,
-            //     low_frequency_boost_curvature: 0.0,
-            //     high_pass_frequency: 1.0,
-            //     ..default()
-            // },
-            Bloom {
-                intensity: -2.0,
-                low_frequency_boost: 2.0,
-                low_frequency_boost_curvature: 0.25,
-                high_pass_frequency: 1.0,
-                scale: Vec2::new(0.5, 1.0),
-                ..default()
-            },
-            // Bloom::NATURAL,
-            ColorGrading {
-                global: ColorGradingGlobal {
-                    // exposure: 1.25,
-                    exposure: 1.0,
-                    post_saturation: 1.5,
-                    ..default()
-                },
-                shadows: ColorGradingSection {
-                    lift: -0.005,
-                    ..default()
-                },
-                midtones: ColorGradingSection::default(),
-                highlights: ColorGradingSection {
-                    lift: -0.005,
-                    ..default()
-                }
-            },
-        ));
 
         match video_settings.antialiasing {
             Antialiasing::Off => {
