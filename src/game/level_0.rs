@@ -81,8 +81,6 @@ fn on_level_loaded(
     commands.insert_resource(SpawnTimer(Timer::new(Duration::from_secs(1), TimerMode::Repeating)));
     commands.insert_resource(ShakeTime(Duration::ZERO));
 
-    // commands.set_state(LevelState::Playing);
-
     let cam = world_camera_q.single().unwrap();
 
     let (brightness, skybox) = (100.0, skyboxes.star_map.clone());

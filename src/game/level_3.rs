@@ -5,6 +5,7 @@ use crate::game::*;
 use crate::common::*;
 
 use bevy::camera::visibility::RenderLayers;
+use bevy::core_pipeline::Skybox;
 use bevy_seedling::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 use rand::RngExt;
@@ -54,8 +55,10 @@ fn register_level(mut list: ResMut<LevelList>, maps: Res<MapAssets>) {
 
 fn on_level_loaded(
     mut commands: Commands,
+    world_camera_q: Query<Entity, (With<Camera3d>, With<WorldCamera>)>,
+    viewer_camera_q: Query<Entity, (With<Camera3d>, With<ViewerCamera>)>,
     models: Res<ModelAssets>,
-    camera_q: Query<Entity, (With<Camera3d>, With<ViewerCamera>)>,
+    skyboxes: Res<SkyboxAssets>,
 ) {
     let net = commands.spawn((
         Name::new("Net"),
@@ -64,14 +67,32 @@ fn on_level_loaded(
         Transform::from_xyz(0.0, 0.0, -1.0).with_scale(Vec3::splat(2.0)),
         Visibility::Visible,
     )).id();
-    commands.entity(camera_q.single().unwrap()).add_child(net);
+    commands.entity(viewer_camera_q.single().unwrap()).add_child(net);
 
     commands.insert_resource(Spawning(false));
     commands.insert_resource(SpawnDelay(Duration::from_secs(1)));
     commands.insert_resource(SpawnTimer(Timer::new(Duration::from_secs(1), TimerMode::Repeating)));
     commands.insert_resource(ShakeTime(Duration::ZERO));
 
-    commands.set_state(LevelState::Playing);
+    // commands.set_state(LevelState::Playing);
+
+    let cam = world_camera_q.single().unwrap();
+
+    let (brightness, skybox) = (100.0, skyboxes.star_map.clone());
+    let with_reflection_probe = Some((cam, 100.0));
+    commands.entity(cam).insert(SkyboxModel {
+        skybox: Skybox {
+            image: skybox,
+            brightness,
+            ..default()
+        },
+        xfrm: SkyboxTransform::From1_0_2f_3f_4_5,
+        with_reflection_probe,
+        enabled: true, //state.show_skybox,
+    });
+
+    commands.set_state(LevelState::LoadingSkybox);
+
 }
 
 fn check_actions(
