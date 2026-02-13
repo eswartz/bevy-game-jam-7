@@ -32,6 +32,7 @@ impl Plugin for PlayerMovementPlugin {
                 FixedPostUpdate,
                 (
                     check_player_environment_fps,
+                    check_player_environment_space,
                     process_player_input_movement_for_cheats.run_if(is_cheating),
                     process_player_input_movement_for_fps
                         .run_if(not(is_cheating))
@@ -151,7 +152,7 @@ impl PlayerInputSettings {
             max_down_speed: 128,
             crouch_depth: 0.0,
             grounded_y_speed: 0,
-            air_scale: 1.0,
+            air_scale: 0.99,
 
             movement_decay_time_secs: 1.0 / 10.0,
             fly_decay_time_secs: 1.0 / 8.0,
@@ -649,6 +650,33 @@ fn check_player_environment_fps(
                     movement.state = MovementState::OnSlope;
                 }
             }
+        }
+    }
+}
+
+fn check_player_environment_space(
+    mut player_q: Query<
+        (
+            Entity,
+            &PlayerMovement,
+            &mut LinearVelocity,
+        ),
+        With<Player>,
+    >,
+    settings: Res<PlayerInputSettings>,
+) {
+    if settings.mode != PlayerMode::Space {
+        return
+    }
+
+    for (_player_ent, movement, mut vel) in player_q.iter_mut() {
+        if movement.state == MovementState::Scripted {
+            continue;
+        }
+
+        if movement.velocity < 0.01 {
+            // Lose speed gradually.
+            vel.0 = vel.0 * settings.air_scale;
         }
     }
 }

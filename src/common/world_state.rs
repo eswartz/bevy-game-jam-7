@@ -21,8 +21,6 @@ pub struct WorldStatePlugin;
 impl Plugin for WorldStatePlugin {
     fn build(&self, app: &mut App) {
         app
-            .register_type::<WorldMarker>()
-            .register_type::<NextLevelIndex>()
             .insert_resource(Gravity((9.8 * Vec3::NEG_Y).into()))
             .init_resource::<SkyboxCache>()
             .add_systems(OnEnter(GameplayState::AssetsLoaded),
@@ -116,6 +114,12 @@ impl Default for WorldMarker {
         Self(Aabb3d::new(Vec3::ZERO, Vec3::ONE))
     }
 }
+
+/// The AABB reflects the full extent of the "valid content" of the world.
+#[derive(Resource, Reflect)]
+#[reflect(Resource)]
+#[type_path = "game"]
+pub struct WorldMarkerEntity(pub Entity);
 
 #[derive(Component, Reflect, Default)]
 #[reflect(Component, Default)]
@@ -265,7 +269,7 @@ pub struct ReflectionProbeModel {
 /// and apply to the camera, then remove the component.
 pub(crate) fn check_load_reflection_probe(
     load_probe_q: Query<(Entity, &ReflectionProbeModel), Changed<ReflectionProbeModel>>,
-    world_q: Query<Entity, With<WorldMarker>>,
+    world: Res<WorldMarkerEntity>,
     mut commands: Commands,
     mut images: ResMut<Assets<Image>>,
     mut setup: ResMut<WorldSetup>,
@@ -331,23 +335,19 @@ pub(crate) fn check_load_reflection_probe(
         },
     ));
 
-    if let Ok(world) = world_q.single() {
-        commands.spawn((
-            Name::new("Reflection Probe"),
-            LightProbe,
-            EnvironmentMapLight {
-                diffuse_map: diffuse.clone(),
-                specular_map: image.clone(),
-                intensity: *brightness,
-                affects_lightmapped_mesh_diffuse: false,
-                ..default()
-            },
-            Transform::from_scale(Vec3::splat(100.0)),
-            ChildOf(world),
-        ));
-    } else {
-        error!("no single WorldMarker entity found @ world");
-    }
+    commands.spawn((
+        Name::new("Reflection Probe"),
+        LightProbe,
+        EnvironmentMapLight {
+            diffuse_map: diffuse.clone(),
+            specular_map: image.clone(),
+            intensity: *brightness,
+            affects_lightmapped_mesh_diffuse: false,
+            ..default()
+        },
+        Transform::from_scale(Vec3::splat(100.0)),
+        ChildOf(world.0),
+    ));
 
     setup.waiting_reflections = false;
 }
@@ -358,13 +358,14 @@ pub(crate) fn setup_world_marker(
     world_q: Query<&WorldMarker>,
 ) {
     if world_q.is_empty() {
-        commands.spawn((
+        let ent = commands.spawn((
             Name::new("World"),
             DespawnOnExit(ProgramState::InGame),
             WorldMarker::default(),
             Transform::IDENTITY,
             Visibility::Inherited,
-        ));
+        )).id();
+        commands.insert_resource(WorldMarkerEntity(ent));
     }
 }
 
