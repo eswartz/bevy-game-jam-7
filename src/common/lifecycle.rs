@@ -3,6 +3,7 @@ use avian3d::prelude::PhysicsTime as _;
 use bevy_seedling::prelude::PlaybackSettings;
 use bevy::prelude::*;
 use bevy_seedling::sample::SamplePlayer;
+use bevy_tweening::TweenAnim;
 
 use crate::common::is_paused;
 
@@ -70,47 +71,52 @@ impl PauseState {
 #[derive(Component)]
 pub(crate) struct PlaybackPaused;
 
+/// This owns the management of play/pause toggling.
 pub(crate) fn check_pause_request(
     mut commands: Commands,
     paused: ResMut<PauseState>,
     mut time: ResMut<Time<Physics>>,
     mut settings_q: Query<(Entity, &mut PlaybackSettings, Option<&PlaybackPaused>), With<SamplePlayer>>,
     // synths_paused: Res<MidiSynthsPaused>,
-    // mut animator_transform_q: Query<&mut TweenAnim>,
+    mut animator_transform_q: Query<&mut TweenAnim>,
     // mut time_runner_q: Query<&mut TimeRunner>,
 ) {
-    if paused.is_changed() {
-        let pause = paused.is_paused();
-        if pause {
-            time.pause();
-            for (ent, mut settings, _) in settings_q.iter_mut() {
-                if *settings.play {
-                    settings.pause();
-                    commands.entity(ent).insert(PlaybackPaused);
-                }
+    if !paused.is_changed() {
+        return
+    }
+    // Get the current, changed value, read as "our action: pause".
+    let pause = paused.is_paused();
+    // refactor?
+    if pause {
+        time.pause();
+        for (ent, mut settings, _) in settings_q.iter_mut() {
+            if *settings.play {
+                settings.pause();
+                commands.entity(ent).insert(PlaybackPaused);
             }
-            // synths_paused.0.store(true, Ordering::SeqCst);
-            // for mut animator in animator_transform_q.iter_mut() {
-            //     animator.playback_state = bevy_tweening::PlaybackState::Paused;
-            // }
-            // for mut runner in time_runner_q.iter_mut() {
-            //     runner.set_paused(true);
-            // }
-        } else {
-            time.unpause();
-            for (ent, mut settings, paused) in settings_q.iter_mut() {
-                if paused.is_some() {
-                    settings.play();
-                    commands.entity(ent).remove::<PlaybackPaused>();
-                }
-            }
-            // synths_paused.0.store(false, Ordering::SeqCst);
-            // for mut animator in animator_transform_q.iter_mut() {
-            //     animator.playback_state = bevy_tweening::PlaybackState::Playing;
-            // }
-            // for mut runner in time_runner_q.iter_mut() {
-            //     runner.set_paused(false);
-            // }
         }
+        // synths_paused.0.store(true, Ordering::SeqCst);
+        for mut animator in animator_transform_q.iter_mut() {
+            // By our convention,
+            animator.playback_state = bevy_tweening::PlaybackState::Paused;
+        }
+        // for mut runner in time_runner_q.iter_mut() {
+        //     runner.set_paused(true);
+        // }
+    } else /* !pause ==> resume */ {
+        time.unpause();
+        for (ent, mut settings, paused) in settings_q.iter_mut() {
+            if paused.is_some() {
+                settings.play();
+                commands.entity(ent).remove::<PlaybackPaused>();
+            }
+        }
+        // synths_paused.0.store(false, Ordering::SeqCst);
+        for mut animator in animator_transform_q.iter_mut() {
+            animator.playback_state = bevy_tweening::PlaybackState::Playing;
+        }
+        // for mut runner in time_runner_q.iter_mut() {
+        //     runner.set_paused(false);
+        // }
     }
 }

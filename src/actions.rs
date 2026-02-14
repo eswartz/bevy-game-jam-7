@@ -1,6 +1,10 @@
+
+
 use crate::common::*;
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::*;
+
+/// note: actions are *handled* in [crate::common::actions_common].
 
 pub fn default_input_map() -> InputMap<UserAction> {
     use UserAction::*;
@@ -64,6 +68,9 @@ pub fn default_input_map() -> InputMap<UserAction> {
 
     input_map.insert(Interact, KeyCode::KeyE);
 
+    // Note: this usage as an action is only processed in gameplay
+    // (which, being pauseable, means there'd be no way to escape),
+    // but KeyCode::Escape is elsewhere handled manually in an unpauseable way.
     input_map.insert(ToggleMenu, KeyCode::Escape);
     input_map.insert(TogglePause, KeyCode::Pause);
     input_map.insert(

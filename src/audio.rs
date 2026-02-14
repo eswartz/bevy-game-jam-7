@@ -90,7 +90,6 @@ fn handle_user_actions(mut commands: Commands,
     mut reader: MessageReader<MenuActionMessage>,
 ) {
     if action_state.just_pressed(&UserAction::SwitchNextAudioTrack) {
-
     }
 
     if reader.is_empty() {
@@ -108,6 +107,7 @@ fn handle_user_actions(mut commands: Commands,
     }
 }
 
+/// Play a click sound on menu action?
 fn is_menu_action_click_bait(event: &MenuActionMessage) -> bool {
     match event {
         MenuActionMessage::Activate(_) => false,

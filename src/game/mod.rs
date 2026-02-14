@@ -148,10 +148,10 @@ pub fn is_in_level(id: &str) -> impl Fn(Option<Res<CurrentLevel>>) -> bool {
 }
 
 /// The current level.
-#[derive(Resource, Reflect, Debug)]
+#[derive(Resource, Reflect, Debug, Deref)]
 #[reflect(Resource)]
 #[type_path = "game"]
-pub struct CurrentLevel(pub LevelInfo);
+pub(crate) struct CurrentLevel(pub(crate) LevelInfo);
 
 /// The level index into [LevelList].
 #[derive(Resource, Default, Reflect)]
@@ -166,7 +166,7 @@ pub struct CurrentScore {
     pub score: i32,
 }
 
-const END_LEVEL_DELAY_SECS: u64 = 1;
+const END_LEVEL_DELAY_SECS: u64 = 3;
 
 /// Countdown to next or same level.
 #[derive(Resource, Reflect, Default)]
@@ -355,6 +355,8 @@ pub(crate) fn ensure_levels(mut level_list: ResMut<LevelList>) {
 pub(crate) fn level_spawn_started(mut commands: Commands, mut pause: ResMut<PauseState>) {
     commands.set_state(LevelState::Initializing);
     commands.set_state(OverlayState::Loading);
+
+    // Prevent moving/interacting while loading UI is up.
     pause.set_menu_paused(true);
 }
 
@@ -383,6 +385,8 @@ pub(crate) fn level_spawn_finished(
 
     commands.set_state(OverlayState::Hidden);
     commands.set_state(LevelState::LevelLoaded);
+
+    // Go for it, user (unless they did set_user_paused)
     pause.set_menu_paused(false);
 }
 
@@ -543,7 +547,10 @@ fn update_current_score(
     goal_q: Query<&ScoreGoal, With<LevelRoot>>,
 ) {
     let Ok(goal) = goal_q.single() else {
-        log::error!("missing or too many LevelRoot + ScoreGoal");
+        if *level_state == LevelState::LoadingSkybox {
+            // This is allowable, but report once just in case.
+            log::warn!("missing or too many LevelRoot + ScoreGoal");
+        };
         return;
     };
 

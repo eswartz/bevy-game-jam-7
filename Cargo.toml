@@ -19,6 +19,7 @@ bevy = { version = "0.18.0", default-features = false, features = [
     # And these optional:
     # "dev",
     "bevy_dev_tools",
+    "file_watcher",
     # "async-io",
     # "bevy_remote",
     "jpeg",

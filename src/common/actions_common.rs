@@ -1,4 +1,6 @@
 use crate::common::*;
+use bevy::input::ButtonState;
+use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy::window::WindowMode;
@@ -122,24 +124,26 @@ pub enum UserAction {
 }
 
 /// Handle Escape, which is handled differently outside and inside menus.
+///
 fn handle_escape(
     mut commands: Commands,
     overlay_state: Res<State<OverlayState>>,
     going_back: Option<Res<GoBackInMenuRequest>>,
     mut previous_menu: ResMut<PreviousMenuStack>,
-    actions: Res<ActionState<UserAction>>,
+    // actions: Res<ActionState<UserAction>>,
+    mut reader: MessageReader<KeyboardInput>,
+    mut pause: ResMut<PauseState>,
 ) {
-    // Menu logic handles this itself.
-    if overlay_state.is_menu() {
-        return;
-    }
+    // // Menu logic handles this itself.
+    // if overlay_state.is_menu() {
+    //     return;
+    // }
     if going_back.is_some() {
         return;
     }
 
-    if actions.just_pressed(&UserAction::ToggleMenu) {
-    // for key_event in reader.read() {
-        // if key_event.state == ButtonState::Pressed && key_event.key_code == KeyCode::Escape {
+    for key_event in reader.read() {
+        if key_event.state == ButtonState::Pressed && key_event.key_code == KeyCode::Escape {
             // If we reach the root, handle it here.
             match overlay_state.get() {
                 OverlayState::Hidden => {
@@ -148,7 +152,12 @@ fn handle_escape(
                     commands.set_state(OverlayState::EscapeMenu);
                 }
                 OverlayState::EscapeMenu => {
-                    commands.insert_resource(GoBackInMenuRequest);
+                    // commands.write_message(MenuActionMessage::ResumeGame);   // nope
+
+                    // Go back to gameplay, like the ResumeGame command.
+                    pause.set_menu_paused(false);
+
+                    commands.set_state(OverlayState::Hidden);
                 }
                 OverlayState::MainMenu => {
                     // Ignore, since we don't leave exit via Quit (TODO: can this quit?)
@@ -159,7 +168,7 @@ fn handle_escape(
                 OverlayState::DebugGuiVisible => commands.set_state(OverlayState::Hidden),
                 _ => (),
             }
-        // }
+        }
     }
 }
 
@@ -177,16 +186,20 @@ fn process_global_actions(
     mut vol_q: Single<&mut UserVolume, With<MainBus>>,
 ) {
     if action_state.just_pressed(&UserAction::TogglePause) {
-        let paused = !pause_state.is_user_paused();
+        // Toggle from whatever means we are paused, as an
+        // escape hatch.
+        let paused = !pause_state.is_paused();
         pause_state.set_user_paused(paused);
     }
     if action_state.just_pressed(&UserAction::ToggleDebugUi) {
         if show_dev_tools() {
-            commands.set_state(match overlay_state.get() {
-                OverlayState::Hidden => OverlayState::DebugGuiVisible,
-                OverlayState::DebugGuiVisible => OverlayState::Hidden,
-                current => *current,
-            });
+            if !overlay_state.is_menu() {
+                commands.set_state(match overlay_state.get() {
+                    OverlayState::Hidden => OverlayState::DebugGuiVisible,
+                    OverlayState::DebugGuiVisible => OverlayState::Hidden,
+                    current => *current,
+                });
+            }
         }
     }
     if action_state.just_pressed(&UserAction::ToggleFullScreen)

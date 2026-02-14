@@ -26,10 +26,13 @@ pub fn is_paused(paused: Res<PauseState>) -> bool {
     paused.is_paused()
 }
 /// Use as a condition to test whether the user pause state is set.
+/// (In the outer game, this refers specifically to user input of [Action::TogglePause].)
 pub fn is_user_paused(paused: Res<PauseState>) -> bool {
     paused.is_user_paused()
 }
 /// Use as a condition to test whether the menu pause state is set.
+/// This refers specifically to internal menu-driven changes
+/// (using in-game menu), not user inputs.
 pub fn is_menu_paused(paused: Res<PauseState>) -> bool {
     paused.is_menu_paused()
 }

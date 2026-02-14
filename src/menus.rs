@@ -11,6 +11,7 @@ use strum::VariantArray;
 use crate::ExitRequest;
 use crate::assets::GuiAssets;
 use crate::common::*;
+use crate::game::CurrentLevel;
 use crate::game::LevelList;
 use crate::game::LevelIndex;
 
@@ -48,7 +49,8 @@ impl MenuItemHandler for SimpleMenuActions {
     fn handle(&mut self, world: &mut World, message: &MenuActionMessage) {
         // let program_state = *world.get_resource::<State<ProgramState>>().unwrap().get();
         // let overlay_state = *world.get_resource::<State<OverlayState>>().unwrap().get();
-        let mut paused = world
+        // Fetch the paused resource into a local copy to avoid double mutable borrows.
+        let mut paused_copy = world
             .get_resource::<PauseState>()
             .cloned()
             .unwrap_or_default();
@@ -62,7 +64,7 @@ impl MenuItemHandler for SimpleMenuActions {
                     commands.insert_resource(GoBackInMenuRequest);
                 }
                 SimpleMenuActions::PlayGame => {
-                    commands.insert_resource(LevelIndex(0));
+                    // Do not modify current_level LevelIndex, etc. here, but in client.
                     start_game(commands.reborrow());
                 }
                 SimpleMenuActions::GameMenu => {
@@ -84,13 +86,16 @@ impl MenuItemHandler for SimpleMenuActions {
                     commands.insert_resource(ExitRequest);
                 }
                 SimpleMenuActions::ResumeGame => {
-                    paused.set_menu_paused(false);
-                    commands.insert_resource(paused);
+                    paused_copy.set_menu_paused(false);
+                    commands.insert_resource(paused_copy);
+
                     commands.set_state(OverlayState::Hidden);
                 }
                 SimpleMenuActions::StopGame => {
-                    paused.set_menu_paused(false);
-                    commands.insert_resource(paused);
+                    paused_copy.set_menu_paused(false);
+                    paused_copy.set_user_paused(false);
+                    commands.insert_resource(paused_copy);
+
                     commands.set_state(ProgramState::LaunchMenu);
                     commands.set_state(GameplayState::New);
                 }
@@ -116,7 +121,12 @@ fn on_enter_main_menu(
     mut history: ResMut<MenuItemSelectionHistory>,
     // mut glyph_mats: ResMut<Assets<TitleShader>>,
     product_name: Res<ProductName>,
+    current_level: Option<Res<CurrentLevel>>,
 ) {
+    // Re-initialize state (on entry and on game exit).
+
+    // Do not clear CurrentLevel. `Play` goes there and acts as Reset...
+
     commands.spawn((
         DespawnOnExit(OverlayState::MainMenu),
         Text2d::new(&product_name.0),
@@ -149,7 +159,13 @@ fn on_enter_main_menu(
         1.0,
         &history,
     )
-    .add_item("Play", (), SimpleMenuActions::PlayGame)
+    .add_item(
+        if let Some(level) = current_level {
+            format!("Reset ({})", level.label)
+        } else {
+            "Play".to_string()
+        },
+        (), SimpleMenuActions::PlayGame)
     .add_item("Game", (), SimpleMenuActions::GameMenu)
     .add_item("Options", (), SimpleMenuActions::OptionsMenu)
     .add_item("Quit", (), SimpleMenuActions::Quit)
@@ -274,9 +290,12 @@ fn on_enter_escape_menu(
     fonts: Res<GuiAssets>,
     commands: Commands,
     mut history: ResMut<MenuItemSelectionHistory>,
-    // level_regy: Res<LevelRegistry>,
-    // level_id: Res<LevelId>,
+    current_level: Res<CurrentLevel>,
+    mut paused: ResMut<PauseState>,
 ) {
+    // The menu sets [paused()] to true on first entry
+    // by setting one of the OR inputs to that method.
+    paused.set_menu_paused(true);
     MenuItemBuilder::new(
         commands,
         OverlayState::EscapeMenu,
@@ -285,17 +304,20 @@ fn on_enter_escape_menu(
         1.0,
         &history,
     )
-    // .add_item(format!("Resume ({})", level_regy.level_name(&level_id.0)),
     // (), SimpleMenuActions::ResumeGame)
     .add_item("Audio", (), SimpleMenuActions::AudioMenu)
     .add_item("Video", (), SimpleMenuActions::VideoMenu)
     .add_item("Controls", (), SimpleMenuActions::ControlsMenu)
     .add_item("Stop", (), SimpleMenuActions::StopGame)
-    .add_item("Resume", (), SimpleMenuActions::ResumeGame)
+    .add_item(format!("Resume ({})", current_level.label), (), SimpleMenuActions::ResumeGame)
     .finish(&mut history);
 }
 
-fn on_exit_escape_menu() {}
+fn on_exit_escape_menu(mut pause: ResMut<PauseState>) {
+    // Unpause if the menu paused.
+    // (Has no effect on user pause (key event) which also counts as a pause)
+    pause.set_menu_paused(false);
+}
 
 #[derive(Debug, Clone)]
 pub(crate) enum SliderMenuActions {

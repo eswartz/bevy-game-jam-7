@@ -4,10 +4,12 @@ mod assets;
 mod audio;
 mod player_spawning;
 mod actions;
+mod camera;
 mod game;
 
 use crate::assets::*;
 use crate::audio::AudioPlugin;
+use crate::camera::ensure_3d_camera;
 use crate::game::CameraEffects;
 use crate::game::GamePlugin;
 use crate::game::LevelRoot;
@@ -230,196 +232,6 @@ fn main() -> AppExit {
     app.run()
 }
 
-fn ensure_3d_camera(
-    mut commands: Commands,
-    world_camera_q: Query<Entity, (With<Camera3d>, With<WorldCamera>)>,
-    view_camera_q: Query<Entity, (With<Camera3d>, With<ViewerCamera>)>,
-    camera_fx_q: Query<&CameraEffects, With<LevelRoot>>,
-    render_device: Res<RenderDevice>,
-    render_adapter: Res<RenderAdapter>,
-) {
-    let use_clustered =
-        bevy::pbr::decal::clustered::clustered_decals_are_usable(&render_device, &render_adapter);
-
-    let ent = if let Ok(ent) = world_camera_q.single() {
-        // Got one.
-        ent
-    } else {
-        info!("Creating 3D camera");
-
-        commands.spawn_empty().id()
-    };
-
-    configure_world_camera(commands.get_entity(ent).unwrap(), use_clustered);
-    if let Ok(fx) = camera_fx_q.single() {
-        configure_camera_effects(commands.get_entity(ent).unwrap(), fx);
-    } else {
-        log::warn!("missing CameraEffects on scene");
-    }
-
-    ////
-
-    let ent = if let Ok(ent) = view_camera_q.single() {
-        // Got one.
-        ent
-    } else {
-        info!("Creating viewer camera");
-
-        commands.spawn_empty().id()
-    };
-
-    configure_viewer_camera(commands.get_entity(ent).unwrap(), use_clustered);
-    if let Ok(fx) = camera_fx_q.single() {
-        configure_camera_effects(commands.get_entity(ent).unwrap(), fx);
-    } else {
-        log::warn!("missing CameraEffects on scene");
-    }
-
-    ////
-
-    // Force init.
-    commands.insert_resource(VideoCameraSettingsChanged);
-    commands.insert_resource(VideoEffectSettingsChanged);
-}
-
-fn configure_world_camera(mut ent_commands: EntityCommands, use_clustered: bool) {
-    ent_commands.insert((
-        (
-            DespawnOnExit(GameplayState::Playing),
-
-            (
-                Name::new("WorldCamera"),
-                WorldCamera,
-                Camera3d::default(),
-                RenderLayers::layer(RENDER_LAYER_DEFAULT),
-
-                Exposure { ev100: 10.0 },
-                Camera {
-                    order: 1,
-                    clear_color: Color::BLACK.into(),
-                    ..default()
-                },
-                Hdr,
-                Projection::Perspective(PerspectiveProjection {
-                    // fov: std::f32::consts::PI / 5.0,
-                    fov: 75f32.to_radians(),
-                    ..default()
-                }),
-                OrderIndependentTransparencySettings::default(),
-                Msaa::Off,
-
-                PlayerCamera(CameraMode::FirstPerson),
-                OurCamera::default(),
-                Transform::from_xyz(0., 1., 0.),
-            ),
-
-            // Audio is from the perspective of the camera.
-            SpatialListener3D::default(),
-        ),
-    ));
-
-    if !use_clustered {
-        ent_commands.insert(DepthPrepass);
-    }
-}
-
-fn configure_viewer_camera(mut ent_commands: EntityCommands, use_clustered: bool) {
-    ent_commands.insert((
-        (
-            DespawnOnExit(GameplayState::Playing),
-
-            Name::new("ViewCamera"),
-            ViewerCamera,
-            Camera3d::default(),
-            RenderLayers::layer(RENDER_LAYER_VIEW),
-
-            Exposure { ev100: 1.0 },
-            Camera {
-                order: 2,
-                clear_color: ClearColorConfig::None,
-                ..default()
-            },
-            Hdr,
-            Projection::Perspective(PerspectiveProjection {
-                fov: 90f32.to_radians(),
-                ..default()
-            }),
-            Msaa::Off,  // must match WorldCamera
-        ),
-    ));
-
-    if !use_clustered {
-        ent_commands.insert(DepthPrepass);
-    }
-}
-
-fn configure_camera_effects(mut ent_commands: EntityCommands, fx: &CameraEffects) {
-    match fx {
-        CameraEffects::Normal => {
-            ent_commands.insert(Tonemapping::BlenderFilmic);
-            ent_commands.insert(Bloom::default());
-            ent_commands.insert(ColorGrading::default());
-        }
-        CameraEffects::Mode1 => {
-            ent_commands.insert(Tonemapping::TonyMcMapface);
-            ent_commands.insert(Bloom {
-                intensity: -1.0,
-                low_frequency_boost: 1.0,
-                low_frequency_boost_curvature: 0.0,
-                high_pass_frequency: 1.0,
-                ..default()
-            });
-            ent_commands.insert(ColorGrading {
-                global: ColorGradingGlobal {
-                    exposure: 1.25,
-                    post_saturation: 1.5,
-                    ..default()
-                },
-                shadows: ColorGradingSection {
-                    lift: -0.005,
-                    ..default()
-                },
-                midtones: ColorGradingSection::default(),
-                highlights: ColorGradingSection {
-                    lift: -0.005,
-                    ..default()
-                }
-            });
-        }
-        CameraEffects::Mode2 => {
-            ent_commands.insert(Tonemapping::TonyMcMapface);
-            ent_commands.insert(
-                Bloom {
-                    intensity: -2.0,
-                    low_frequency_boost: 2.0,
-                    low_frequency_boost_curvature: 0.25,
-                    high_pass_frequency: 1.0,
-                    scale: Vec2::new(0.5, 1.0),
-                    ..default()
-                }
-            );
-            ent_commands.insert(ColorGrading {
-                global: ColorGradingGlobal {
-                    // exposure: 1.25,
-                    exposure: 1.0,
-                    post_saturation: 1.5,
-                    ..default()
-                },
-                shadows: ColorGradingSection {
-                    lift: -0.005,
-                    ..default()
-                },
-                midtones: ColorGradingSection::default(),
-                highlights: ColorGradingSection {
-                    lift: -0.005,
-                    ..default()
-                }
-            });
-        }
-    }
-}
-
-
 fn check_app_exit(
     mut commands: Commands,
     exit: Option<Res<ExitRequest>>,
@@ -489,7 +301,7 @@ pub(crate) fn on_game_over_screen(
     fonts: Option<Res<GuiAssets>>,
 ) {
     let ent_commands = commands.spawn((
-        Name::new("Loading..."),
+        Name::new("GameOver"),
         GameOverScreen,
     ));
     setup_game_over_screen(ent_commands, fonts.as_deref());
@@ -517,7 +329,7 @@ pub(crate) fn setup_game_over_screen(
             justify_content: JustifyContent::Center,
             .. default()
         },
-        BackgroundColor(tailwind::GREEN_800.with_alpha(0.75).into()),
+        BackgroundColor(tailwind::GREEN_800.with_alpha(0.5).into()),
         RenderLayers::from_layers(&[RENDER_LAYER_UI]),
     ))
     .with_children(|builder| {

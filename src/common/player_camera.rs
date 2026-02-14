@@ -25,7 +25,8 @@ impl Plugin for PlayerCameraPlugin {
                 .chain()
                 .after(PhysicsSystems::Writeback)
                 .before(TransformSystems::Propagate)
-                .run_if(not(is_user_paused))
+                // .run_if(not(is_user_paused))
+                .run_if(not(is_menu_paused))
                 .run_if(is_game_active)
                 ,
             )

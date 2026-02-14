@@ -410,6 +410,7 @@ fn update_pause_ui(
     mut text_q: Query<&mut Text, With<PauseArea>>,
 ) {
     if let Ok(mut text) = text_q.single_mut() {
+        // One icon for any pause reason.
         let new_text = if paused.is_paused() { "\u{1F6AB}" } else { " " };
         if new_text != text.0 {
             text.0 = new_text.to_string();
