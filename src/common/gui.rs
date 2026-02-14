@@ -201,12 +201,14 @@ pub(crate) struct GrabState{ was_grabbed: bool, options: CursorOptions }
 
 fn check_gui_state(
     state: Res<GuiState>,
-    mut fps: ResMut<bevy::dev_tools::fps_overlay::FpsOverlayConfig>,
+    fps: Option<ResMut<bevy::dev_tools::fps_overlay::FpsOverlayConfig>>,
     mut status_visible: ResMut<StatusVisible>,
     mut skybox_q: Query<&mut SkyboxModel>,
     overlay: Res<State<OverlayState>>,
 ) {
-    fps.enabled = state.show_fps || overlay.is_debug();
+    if let Some(mut fps) = fps {
+        fps.enabled = state.show_fps || overlay.is_debug();
+    }
     status_visible.0 = state.show_status;
     for mut skybox in skybox_q.iter_mut() {
         skybox.enabled = state.show_skybox;

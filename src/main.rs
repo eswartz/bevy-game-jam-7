@@ -58,7 +58,8 @@ fn main() -> AppExit {
         Ok(base_dir) => base_dir,
     };
 
-    let exit = App::new()
+    let mut app = App::new();
+    app
         .insert_resource(WinitSettings {
             focused_mode: bevy::winit::UpdateMode::reactive_low_power(Duration::from_secs_f32(
                 1.0 / 120.0,
@@ -89,28 +90,8 @@ fn main() -> AppExit {
             SkeinPlugin::default(),
             PhysicsPlugins::default(),
         ))
-        .add_plugins(avian3d::debug_render::PhysicsDebugPlugin::default()) // show colliders
-        ////////
-        .insert_state(ProgramState::default())
-        .insert_state(GameplayState::default())
-        .insert_state(OverlayState::default())
-        //////
-        .add_systems(
-            First,
-            (
-                bevy::dev_tools::states::log_transitions::<ProgramState>,
-                bevy::dev_tools::states::log_transitions::<GameplayState>,
-                bevy::dev_tools::states::log_transitions::<OverlayState>,
-                bevy::dev_tools::states::log_transitions::<LevelState>,
-            ),
-        )
-        //////
-        .add_plugins(EguiPlugin::default())
-        .insert_resource(EguiGlobalSettings {
-            auto_create_primary_context: false,
-            ..default()
-        })
-        .add_plugins(FpsOverlayPlugin::default())
+        .add_plugins(avian3d::debug_render::PhysicsDebugPlugin::default())
+
         .insert_gizmo_config(
             PhysicsGizmos::default(),
             GizmoConfig {
@@ -121,6 +102,19 @@ fn main() -> AppExit {
             },
         )
         ////////
+
+        .add_plugins(EguiPlugin::default())
+        .insert_resource(EguiGlobalSettings {
+            auto_create_primary_context: false,
+            ..default()
+        })
+
+        ////////
+        .insert_state(ProgramState::default())
+        .insert_state(GameplayState::default())
+        .insert_state(OverlayState::default())
+
+        //////
         // Custom exit handling.
         .add_systems(
             First,
@@ -148,7 +142,6 @@ fn main() -> AppExit {
         .add_plugins(GuiPlugin)
         .add_plugins(WorldUiPlugin)
         .add_plugins(WorldStatePlugin)
-        .add_plugins(DebugPlugin)
         .add_plugins(AudioPlugin)
         .add_plugins(CrosshairPlugin)
         .add_plugins(EffectsPlugin)
@@ -176,7 +169,7 @@ fn main() -> AppExit {
         .add_systems(OnEnter(ProgramState::Initializing), on_enter_initializing)
         .add_systems(
             OnEnter(ProgramState::New),
-            (on_enter_loading, init_perf_ui).chain(),
+            (on_enter_loading, init_perf_ui.run_if(show_dev_tools)).chain(),
         )
         .add_systems(
             OnEnter(ProgramState::LaunchMenu),
@@ -216,11 +209,25 @@ fn main() -> AppExit {
             on_error_screen_finished)
 
         /////
-        .add_plugins(GamePlugin)
+        .add_plugins(GamePlugin);
 
-        .run();
+    if show_dev_tools() {
+        app
+            .add_plugins(DebugPlugin)
+            .add_systems(
+                First,
+                (
+                    bevy::dev_tools::states::log_transitions::<ProgramState>,
+                    bevy::dev_tools::states::log_transitions::<GameplayState>,
+                    bevy::dev_tools::states::log_transitions::<OverlayState>,
+                    bevy::dev_tools::states::log_transitions::<LevelState>,
+                ),
+            )
+            .add_plugins(FpsOverlayPlugin::default())
+        ;
+    }
 
-    exit
+    app.run()
 }
 
 fn ensure_3d_camera(

@@ -181,11 +181,13 @@ fn process_global_actions(
         pause_state.set_user_paused(paused);
     }
     if action_state.just_pressed(&UserAction::ToggleDebugUi) {
-        commands.set_state(match overlay_state.get() {
-            OverlayState::Hidden => OverlayState::DebugGuiVisible,
-            OverlayState::DebugGuiVisible => OverlayState::Hidden,
-            current => *current,
-        });
+        if show_dev_tools() {
+            commands.set_state(match overlay_state.get() {
+                OverlayState::Hidden => OverlayState::DebugGuiVisible,
+                OverlayState::DebugGuiVisible => OverlayState::Hidden,
+                current => *current,
+            });
+        }
     }
     if action_state.just_pressed(&UserAction::ToggleFullScreen)
         && let Ok(mut window) = primary_window.single_mut()

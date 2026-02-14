@@ -5,6 +5,22 @@ use crate::common::OverlayState;
 use crate::common::PauseState;
 use crate::common::ProgramState;
 
+pub fn show_dev_tools() -> bool {
+    if let Ok(val) = std::env::var("DEBUG") {
+        return val == "1" || val == "on";
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        true
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        false
+    }
+}
+
+
 /// Use as a condition to test whether any field in PauseState is set.
 pub fn is_paused(paused: Res<PauseState>) -> bool {
     paused.is_paused()

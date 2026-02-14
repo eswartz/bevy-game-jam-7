@@ -517,7 +517,6 @@ fn start_skybox_setup(
             waiting_skybox: true,
             waiting_reflections: false,
         });
-        log::warn!("1");
         commands.set_state(LevelState::LoadingSkybox);
     } else {
         commands.set_state(LevelState::Playing);
