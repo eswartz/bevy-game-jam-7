@@ -14,6 +14,10 @@
 
 -- always starts collidable without visible net
 
+-- on level exit, let user input cancel the state transition
+
+-- release focus on window switch
+
 !! stole mouse visibility at end of level
 
 Feedback:

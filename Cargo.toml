@@ -19,7 +19,7 @@ bevy = { version = "0.18.0", default-features = false, features = [
     # And these optional:
     # "dev",
     "bevy_dev_tools",
-    "file_watcher",
+    # "file_watcher",   # crashes in glTF
     # "async-io",
     # "bevy_remote",
     "jpeg",
