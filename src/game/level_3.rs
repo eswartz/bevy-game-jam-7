@@ -57,14 +57,15 @@ fn on_level_loaded(
     viewer_camera_q: Query<Entity, (With<Camera3d>, With<ViewerCamera>)>,
     models: Res<ModelAssets>,
 ) {
-    let net = commands.spawn((
+    commands.spawn((
         Name::new("Net"),
         RenderLayers::layer(RENDER_LAYER_VIEW),
         SceneRoot(models.net.clone()),
         Transform::from_xyz(0.0, 0.0, -1.0).with_scale(Vec3::splat(2.0)),
-        Visibility::Visible,
-    )).id();
-    commands.entity(viewer_camera_q.single().unwrap()).add_child(net);
+        Visibility::Hidden,
+        InHand,
+        ChildOf(viewer_camera_q.single().unwrap()),
+    ));
 
     commands.insert_resource(Spawning(false));
     commands.insert_resource(SpawnDelay(Duration::from_secs(1)));
@@ -80,22 +81,37 @@ fn check_actions(
     fx: Res<FxAssets>,
     time: Res<Time<Physics>>,
     shake_q: Query<Entity, With<ShakingSound>>,
+    mut hand_q: Query<(&mut Visibility), With<InHand>>,
     mut shake_time: ResMut<ShakeTime>,
     spawning: Res<Spawning>,
     mut commands: Commands,
 ) {
-    if actions.just_released(&UserAction::Interact) {
-        let new_state = !spawning.0;
-        let sample = if new_state {
-            fx.on.clone()
-        } else {
-            fx.off.clone()
-        };
-        commands.spawn((
-            UiSfx,
-            SamplePlayer::new(sample),
-        ));
-        commands.insert_resource(Spawning(new_state))
+    // if actions.just_released(&UserAction::Interact) {
+    //     let new_state = !spawning.0;
+    //     let sample = if new_state {
+    //         fx.on.clone()
+    //     } else {
+    //         fx.off.clone()
+    //     };
+    //     commands.spawn((
+    //         UiSfx,
+    //         SamplePlayer::new(sample),
+    //     ));
+    //     commands.insert_resource(Spawning(new_state))
+    // }
+
+    if actions.just_released(&UserAction::Fire) {
+        let mut any = false;
+        for mut vis in hand_q.iter_mut() {
+            vis.toggle_visible_hidden();
+            any = true;
+        }
+        if any {
+            commands.spawn((
+                UiSfx,
+                SamplePlayer::new(fx.swoosh.clone()),
+            ));
+        }
     }
 
     let mut rng = rand::rng();

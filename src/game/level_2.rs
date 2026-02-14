@@ -63,7 +63,8 @@ fn on_level_loaded(
         RenderLayers::layer(RENDER_LAYER_VIEW),
         SceneRoot(models.net.clone()),
         Transform::from_xyz(0.0, 0.0, -2.0).with_scale(Vec3::splat(2.0)),
-        Visibility::Visible,
+        Visibility::Hidden,
+        InHand,
         ChildOf(cam),
     ));
 

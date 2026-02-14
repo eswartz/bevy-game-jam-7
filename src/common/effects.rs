@@ -73,3 +73,17 @@ impl Lens<Transform> for TransformPositionScaleLens {
         target.scale = self.start.scale.lerp(self.end.scale, ratio);
     }
 }
+
+#[derive(Debug)]
+#[allow(unused)]
+pub struct TransformPositionRotationLens {
+    pub start: Transform,
+    pub end: Transform,
+}
+
+impl Lens<Transform> for TransformPositionRotationLens {
+    fn lerp(&mut self, mut target: Mut<Transform>, ratio: f32) {
+        target.translation = self.start.translation.lerp(self.end.translation, ratio);
+        target.rotation = self.start.rotation.slerp(self.end.rotation, ratio);
+    }
+}

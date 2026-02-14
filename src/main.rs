@@ -334,10 +334,10 @@ fn configure_viewer_camera(mut ent_commands: EntityCommands, use_clustered: bool
             },
             Hdr,
             Projection::Perspective(PerspectiveProjection {
-                fov: 45f32.to_radians(),
+                fov: 90f32.to_radians(),
                 ..default()
             }),
-            Msaa::Off,
+            Msaa::Off,  // must match WorldCamera
         ),
     ));
 
