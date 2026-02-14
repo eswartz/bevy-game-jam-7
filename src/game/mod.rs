@@ -7,17 +7,14 @@ mod level_3;
 
 use bevy::color::palettes::tailwind;
 use bevy::core_pipeline::Skybox;
-use bevy_tweening::{AnimCompletedEvent, EaseMethod, Tween, TweenAnim};
-use bevy_tweening::lens::TransformRotationLens;
 use leafwing_input_manager::prelude::ActionState;
 pub use logic::*;
-use rand::RngExt as _;
 
 use std::time::Duration;
 
-use crate::assets::{FxAssets, SkyboxAssets};
-use crate::player_spawning::spawn_player;
+use crate::assets::SkyboxAssets;
 use crate::common::*;
+use crate::player_spawning::spawn_player;
 
 use bevy::asset::uuid::Uuid;
 use bevy::ecs::world::CommandQueue;
@@ -47,7 +44,6 @@ impl Plugin for GamePlugin {
             .insert_resource(BaseEntity(Entity::PLACEHOLDER, Transform::IDENTITY))
 
             .add_observer(observe_spawn_mesh)
-            .add_observer(observe_in_hand_anim)
 
             .add_systems(
                 OnExit(ProgramState::New),
@@ -112,16 +108,7 @@ impl Plugin for GamePlugin {
                     .run_if(in_state(ProgramState::InGame))
                 ,
             )
-            .add_systems(
-                Update,
-                (
-                    check_actions,
-                )
-                    .run_if(not(is_in_menu))
-                    .run_if(is_level_active)
-                    .run_if(in_state(ProgramState::InGame))
-                ,
-            )
+
             .add_systems(
                 Update,
                 (
@@ -331,11 +318,9 @@ pub(crate) struct ShakingSound;
 
 /////
 
-
 /// Marker for an object in the hand.
 #[derive(Component)]
 pub(crate) struct InHand;
-
 
 /////
 
@@ -645,135 +630,4 @@ fn check_lost_level(
 
     // Restarts level.
     commands.set_state(LevelState::Advance);
-}
-
-fn observe_in_hand_anim(on: On<AnimCompletedEvent>, mut commands: Commands,
-    mut in_hand_q: Query<Option<&ColliderDisabled>, With<InHand>>,
-) {
-    let ent = on.event_target();
-    if let Ok(coll_dis) = in_hand_q.get_mut(ent) {
-        if coll_dis.is_some() {
-            commands.entity(ent).insert(Visibility::Hidden);
-        } else {
-            commands.entity(ent).insert(Visibility::Inherited);
-        }
-    }
-}
-
-fn check_actions(
-    actions: Res<ActionState<UserAction>>,
-    fx: Res<FxAssets>,
-    time: Res<Time<Physics>>,
-    shake_q: Query<Entity, With<ShakingSound>>,
-    mut in_hand_q: Query<(Entity, &mut Visibility, &Transform), With<InHand>>,
-    mut shake_time: ResMut<ShakeTime>,
-    // spawning: Res<Spawning>,
-    mut commands: Commands,
-) {
-    // if actions.just_released(&UserAction::Interact) {
-    //     let new_state = !spawning.0;
-    //     let sample = if new_state {
-    //         fx.on.clone()
-    //     } else {
-    //         fx.off.clone()
-    //     };
-    //     commands.spawn((
-    //         UiSfx,
-    //         SamplePlayer::new(sample),
-    //     ));
-    //     commands.insert_resource(Spawning(new_state))
-    // }
-
-    if actions.just_released(&UserAction::Fire) {
-        let mut any = false;
-        for (ent, vis, xfrm) in in_hand_q.iter_mut() {
-            // Switch hand item.
-            let out_xfrm = Transform::from_xyz(0.0, 0.0, 2.0)
-                            .with_scale(xfrm.scale);
-            let in_xfrm = Transform::from_xyz(0.0, 0.0, -2.0)
-                            .with_scale(xfrm.scale);
-
-            let xfrm_tween = if *vis == Visibility::Hidden {
-                // Going to appear.
-                commands.entity(ent).remove::<ColliderDisabled>();
-                commands.entity(ent).insert(Visibility::Inherited);
-                Tween::new(
-                    EaseMethod::EaseFunction(EaseFunction::BackOut),
-                    Duration::from_secs_f32(0.5),
-                    TransformPositionRotationLens {
-                        start: out_xfrm.with_rotation(Quat::from_rotation_y(std::f32::consts::PI)),
-                        end: in_xfrm,
-                    }
-                )
-            } else {
-                // Going to disappear (hide after anim completed).
-                commands.entity(ent).insert(ColliderDisabled);
-                Tween::new(
-                    EaseMethod::EaseFunction(EaseFunction::BackOut),
-                    Duration::from_secs_f32(0.5),
-                    TransformPositionRotationLens {
-                        start: in_xfrm.with_rotation(Quat::from_rotation_y(std::f32::consts::PI)),
-                        end: out_xfrm,
-                    }
-                )
-            };
-
-            // Trigger observe_in_hand_anim when done.
-            commands.entity(ent).insert((
-                TweenAnim::new(xfrm_tween).with_destroy_on_completed(true),
-            ));
-
-            any = true;
-        }
-        if any {
-            commands.spawn((
-                UiSfx,
-                SamplePlayer::new(fx.swoosh.clone()),
-            ));
-        }
-    }
-
-    let mut rng = rand::rng();
-
-    // Shake the base with left/right/up/down.
-    let mut new_shake = Vec3::ZERO;
-    if let Some(move_lr) = actions.axis_data(&UserAction::MoveLeftRight2d) {
-        new_shake.x = move_lr.value;
-    }
-    if let Some(move_ud) = actions.axis_data(&UserAction::MoveDownUp2d) {
-        new_shake.z = move_ud.value;
-    }
-    if new_shake.length() > 0. {
-        new_shake.y = if rng.random_bool(0.5) { -1. } else { 1. };
-    }
-    if new_shake.length() > 0.0 {
-        commands.insert_resource(ShakeRequest(new_shake * time.delta_secs()));
-
-        if shake_q.single().is_err() {
-            // Start sound.
-            commands.spawn((
-                UiSfx,
-                ShakingSound,
-                SamplePlayer::new(fx.sloshing.clone()),
-            ));
-        }
-        shake_time.0 += time.delta();
-    } else {
-        // Remove sound after enough non-shaking.
-        if !shake_time.0.is_zero() {
-            shake_time.0 = shake_time.0.saturating_sub(time.delta());
-            if shake_time.0.is_zero() {
-                if let Ok(ent) = shake_q.single() {
-                    commands.entity(ent).try_despawn();
-                }
-            }
-        }
-    }
-
-    if actions.just_released(&UserAction::ForceLose) {
-        commands.set_state(LevelState::Lost);
-    }
-    if actions.just_released(&UserAction::ForceWin) {
-        commands.set_state(LevelState::Won);
-    }
 }

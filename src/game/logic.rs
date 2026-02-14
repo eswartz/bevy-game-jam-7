@@ -5,6 +5,7 @@ use crate::game::*;
 use crate::common::*;
 
 use bevy::camera::primitives::Aabb;
+use bevy_egui::input::egui_wants_any_input;
 use bevy_seedling::sample::PlaybackSettings;
 use bevy_seedling::prelude::*;
 
@@ -53,6 +54,20 @@ impl Plugin for LogicPlugin {
                 .run_if(not(is_in_menu))
                 .run_if(is_level_active)
                 .run_if(in_state(ProgramState::InGame))
+            )
+
+            .add_observer(observe_in_hand_anim)
+
+            .add_systems(
+                FixedUpdate,
+                (
+                    check_actions,
+                )
+                    .run_if(not(is_in_menu))
+                    .run_if(is_level_active)
+                    .run_if(not(egui_wants_any_input))
+                    .run_if(in_state(ProgramState::InGame))
+                ,
             )
         ;
     }
@@ -411,6 +426,7 @@ pub(crate) fn check_ball_catch(
                 commands.entity(ball).try_insert((
                     // Make static so it won't move by physics
                     RigidBody::Static,
+                    Ignored,    // don't double-count
                     DespawnAfter(xfrm_tween.cycle_duration()),
                     TweenAnim::new(xfrm_tween).with_destroy_on_completed(true),
                     AimForCamera,
@@ -442,5 +458,179 @@ pub(crate) fn check_ball_catch(
                 ));
             }
         }
+    }
+}
+
+fn observe_in_hand_anim(on: On<AnimCompletedEvent>, mut commands: Commands,
+    mut in_hand_q: Query<Option<&ColliderDisabled>, With<InHand>>,
+) {
+    let ent = on.event_target();
+    if let Ok(coll_dis) = in_hand_q.get_mut(ent) {
+        if coll_dis.is_some() {
+            commands.entity(ent).insert(Visibility::Hidden);
+        } else {
+            commands.entity(ent).insert(Visibility::Inherited);
+        }
+    }
+}
+
+fn check_actions(
+    actions: Res<ActionState<UserAction>>,
+    fx: Res<FxAssets>,
+    time: Res<Time<Physics>>,
+    shake_q: Query<Entity, With<ShakingSound>>,
+    mut in_hand_q: Query<(Entity, &Transform), With<InHand>>,
+    tween_anim_q: Query<Entity, (With<TweenAnim>, With<InHand>)>,
+    // fire_pressed: Option<Res<FirePressed>>,
+    // fire_released: Option<Res<FireReleased>>,
+    mut fire_pressed: Local<bool>,
+    mut fire_released: Local<bool>,
+    mut shake_time: ResMut<ShakeTime>,
+    // spawning: Res<Spawning>,
+    mut commands: Commands,
+) {
+    // if actions.just_released(&UserAction::Interact) {
+    //     let new_state = !spawning.0;
+    //     let sample = if new_state {
+    //         fx.on.clone()
+    //     } else {
+    //         fx.off.clone()
+    //     };
+    //     commands.spawn((
+    //         UiSfx,
+    //         SamplePlayer::new(sample),
+    //     ));
+    //     commands.insert_resource(Spawning(new_state))
+    // }
+
+    let show = if actions.just_pressed(&UserAction::Fire) {
+        if tween_anim_q.iter().next().is_none() {
+            // Nothing animated.
+            true
+        } else {
+            // Wait for later.
+            *fire_pressed = true;
+            false
+        }
+    } else {
+        // Was it pressed before?
+        if *fire_pressed {
+            *fire_pressed = false;
+            true
+        } else {
+            false
+        }
+    };
+
+    let hide = if actions.just_released(&UserAction::Fire) {
+        if tween_anim_q.iter().next().is_none() {
+            // Nothing animated.
+            true
+        } else {
+            // Wait for later.
+            *fire_released = true;
+            false
+        }
+    } else if actions.released(&UserAction::Fire) {
+        // Was it released before?
+        if *fire_released {
+            *fire_released = false;
+            true
+        } else {
+            false
+        }
+    } else {
+        false
+    };
+
+    if show || hide {
+        let mut any = false;
+        for (ent, xfrm) in in_hand_q.iter_mut() {
+            let out_xfrm = Transform::from_xyz(0.0, -1.0, 1.0)
+                            .with_scale(xfrm.scale);
+            let in_xfrm = Transform::from_xyz(0.0, -0.5, -1.0)
+                            .with_scale(xfrm.scale);
+
+            let xfrm_tween = if show {
+                // Going to appear.
+                commands.entity(ent).remove::<ColliderDisabled>();
+                commands.entity(ent).insert(Visibility::Inherited);
+                Tween::new(
+                    EaseMethod::EaseFunction(EaseFunction::BackOut),
+                    Duration::from_secs_f32(1.0),
+                    TransformPositionRotationLens {
+                        start: out_xfrm.with_rotation(Quat::from_rotation_y(std::f32::consts::PI)),
+                        end: in_xfrm,
+                    }
+                )
+            } else {
+                commands.entity(ent).insert(ColliderDisabled);
+                Tween::new(
+                    EaseMethod::EaseFunction(EaseFunction::BackOut),
+                    Duration::from_secs_f32(1.0),
+                    TransformPositionRotationLens {
+                        start: in_xfrm.with_rotation(Quat::from_rotation_y(std::f32::consts::PI)),
+                        end: out_xfrm,
+                    }
+                )
+            };
+
+            // Trigger observe_in_hand_anim when done.
+            commands.entity(ent).insert((
+                TweenAnim::new(xfrm_tween).with_destroy_on_completed(true),
+            ));
+
+            any = true;
+        }
+        if any {
+            commands.spawn((
+                UiSfx,
+                SamplePlayer::new(fx.swoosh.clone()),
+            ));
+        }
+    }
+
+    let mut rng = rand::rng();
+
+    // Shake the base with left/right/up/down.
+    let mut new_shake = Vec3::ZERO;
+    if let Some(move_lr) = actions.axis_data(&UserAction::MoveLeftRight2d) {
+        new_shake.x = move_lr.value;
+    }
+    if let Some(move_ud) = actions.axis_data(&UserAction::MoveDownUp2d) {
+        new_shake.z = move_ud.value;
+    }
+    if new_shake.length() > 0. {
+        new_shake.y = if rng.random_bool(0.5) { -1. } else { 1. };
+    }
+    if new_shake.length() > 0.0 {
+        commands.insert_resource(ShakeRequest(new_shake * time.delta_secs()));
+
+        if shake_q.single().is_err() {
+            // Start sound.
+            commands.spawn((
+                UiSfx,
+                ShakingSound,
+                SamplePlayer::new(fx.sloshing.clone()),
+            ));
+        }
+        shake_time.0 += time.delta();
+    } else {
+        // Remove sound after enough non-shaking.
+        if !shake_time.0.is_zero() {
+            shake_time.0 = shake_time.0.saturating_sub(time.delta());
+            if shake_time.0.is_zero() {
+                if let Ok(ent) = shake_q.single() {
+                    commands.entity(ent).try_despawn();
+                }
+            }
+        }
+    }
+
+    if actions.just_released(&UserAction::ForceLose) {
+        commands.set_state(LevelState::Lost);
+    }
+    if actions.just_released(&UserAction::ForceWin) {
+        commands.set_state(LevelState::Won);
     }
 }

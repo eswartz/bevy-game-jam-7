@@ -72,7 +72,8 @@ pub struct FxAssets {
     pub loss: Handle<AudioSample>,
     #[asset(path = "sounds/250518-bong.ogg")]
     pub gain: Handle<AudioSample>,
-    #[asset(path = "sounds/257803__xtrgamr__swish-2.ogg")]
+    // #[asset(path = "sounds/257803__xtrgamr__swish-2.ogg")]
+    #[asset(path = "sounds/257803__xtrgamr__swish-2_swish-178056__eneasz__folder-snapped-shut.ogg")]
     pub swoosh: Handle<AudioSample>,
 }
 

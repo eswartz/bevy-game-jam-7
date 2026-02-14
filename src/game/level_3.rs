@@ -81,25 +81,10 @@ fn check_actions(
     fx: Res<FxAssets>,
     time: Res<Time<Physics>>,
     shake_q: Query<Entity, With<ShakingSound>>,
-    mut hand_q: Query<(&mut Visibility), With<InHand>>,
+    mut hand_q: Query<&mut Visibility, With<InHand>>,
     mut shake_time: ResMut<ShakeTime>,
-    spawning: Res<Spawning>,
     mut commands: Commands,
 ) {
-    // if actions.just_released(&UserAction::Interact) {
-    //     let new_state = !spawning.0;
-    //     let sample = if new_state {
-    //         fx.on.clone()
-    //     } else {
-    //         fx.off.clone()
-    //     };
-    //     commands.spawn((
-    //         UiSfx,
-    //         SamplePlayer::new(sample),
-    //     ));
-    //     commands.insert_resource(Spawning(new_state))
-    // }
-
     if actions.just_released(&UserAction::Fire) {
         let mut any = false;
         for mut vis in hand_q.iter_mut() {
