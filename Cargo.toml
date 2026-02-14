@@ -17,9 +17,10 @@ bevy = { version = "0.18.0", default-features = false, features = [
     "ui",
 
     # And these optional:
-    "dev",
+    # "dev",
+    "bevy_dev_tools",
     # "async-io",
-    "bevy_remote",
+    # "bevy_remote",
     "jpeg",
     "webp",
     "exr",
@@ -27,7 +28,7 @@ bevy = { version = "0.18.0", default-features = false, features = [
     "asset_processor",
     "experimental_pbr_pcss",
 
-    "basis-universal",
+    # "basis-universal",
     # "trace_tracy",
 ] }
 
@@ -83,8 +84,9 @@ bevy_asset_loader = { version = "0.25.0", features = [
     # "progress_tracking",
 ] }
 serde = { version = "1.0", features = ["alloc", "derive", "serde_derive"] }
-rand = "0.10.0"
+rand = { version = "0.10.0" }
 
+getrandom = { version = "0.4.1", features = ["wasm_js"]}
 image = { version = "0.25", default-features = false }
 wgpu = "27.0.1"
 bytemuck = "1.25.0"
