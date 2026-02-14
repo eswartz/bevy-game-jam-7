@@ -172,11 +172,12 @@ fn collect_player_look(
         window.set_cursor_position(Some(center));
     }
 
-    let mut tilt = action_state.value(&UserAction::Tilt);
-    // Avoid having touchpad generate this as a side effect of a zoom.
-    if mouse_scroll.delta != Vec2::ZERO && mouse_scroll.delta.y.abs() >= 8.0 {
-        tilt = 0.0;
-    }
+    // let mut tilt = action_state.value(&UserAction::Tilt);
+    // // Avoid having touchpad generate this as a side effect of a zoom.
+    // if mouse_scroll.delta != Vec2::ZERO && mouse_scroll.delta.y.abs() >= 8.0 {
+    //     tilt = 0.0;
+    // }
+    let mut tilt = 0.0;
     instant_head_turn.z = tilt * settings.turn_scale.z;
 
     // Don't repeat, else it's just a 360 on the slightest lingering touch.
