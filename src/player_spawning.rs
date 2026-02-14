@@ -27,7 +27,7 @@ pub(crate) fn spawn_player(world: &mut World, user_id: Uuid) -> Entity {
     // let mut meshes =  world.get_resource_mut::<Assets<Mesh>>().unwrap();
 
     // This matches the eye height of the Quake player. A small figure.
-    let player_scale = Vec3::new(0.5, 1.75, 0.3);
+    let player_scale = Vec3::new(0.5, 1.5, 0.3);
     // let mesh = create_player_mesh(&mut meshes, player_scale);
 
     // let mut materials = world.get_resource_mut::<Assets<StandardMaterial>>().unwrap();
@@ -112,33 +112,33 @@ pub(crate) fn spawn_player(world: &mut World, user_id: Uuid) -> Entity {
             // Avoid flying too much when e.g. colliding with a projectile.
             MaxLinearSpeed(4096.0),
 
-            GravityScale(if mode == PlayerMode::Fps { 9.8 } else { 0.0 }),
+            GravityScale(if mode == PlayerMode::Fps { 1.0 } else { 0.0 }),
         ),
 
-        // // This child component is used to:
-        // // (1) interact with tiles/areas/buttons
-        // // (2) provide a collider shape that extends into the
-        // // ground so that when we step on a tile, we don't lose
-        // // contact with it.
-        // // (3) leave the player "body" collider more amenable to
-        // // ordinary movement in a world.
-        // // (4) modify collisions to avoid "entering" water at the edge
-        // children![(
-        //     Name::new("Game Collider"),
-        //     Transform::from_translation(Vec3::new(0., -player_scale.x * 0.05, -player_scale.x)),
-        //     Collider::cuboid(player_scale.x as Scalar, player_scale.y as Scalar, player_scale.x /* yes */ as Scalar),
-        //     // {
-        //     //     let csz = Vec3::new(player_scale.x as f32, player_scale.x as f32 * 0.75, player_scale.x as f32 * 2.0);
-        //     //     Collider::cuboid(csz.x, csz.y, csz.z)
-        //     // },
-        //     // Collider::sphere((player_scale.x / 2.0) as _),
-		// 	CollisionLayers::new([
-        //         GameLayer::Player,
-        //     ], [
-        //         GameLayer::Gameplay,
-        //     ]),
-        //     ActiveCollisionHooks::MODIFY_CONTACTS,
-        // )]
+        // This child component is used to:
+        // (1) interact with tiles/areas/buttons
+        // (2) provide a collider shape that extends into the
+        // ground so that when we step on a tile, we don't lose
+        // contact with it.
+        // (3) leave the player "body" collider more amenable to
+        // ordinary movement in a world.
+        // (4) modify collisions to avoid "entering" water at the edge
+        children![(
+            Name::new("Game Collider"),
+            Transform::from_translation(Vec3::new(0., -player_scale.x * 0.05, -player_scale.x)),
+            Collider::cuboid(player_scale.x as Scalar, player_scale.y as Scalar, player_scale.x /* yes */ as Scalar),
+            // {
+            //     let csz = Vec3::new(player_scale.x as f32, player_scale.x as f32 * 0.75, player_scale.x as f32 * 2.0);
+            //     Collider::cuboid(csz.x, csz.y, csz.z)
+            // },
+            // Collider::sphere((player_scale.x / 2.0) as _),
+			CollisionLayers::new([
+                GameLayer::Player,
+            ], [
+                GameLayer::Gameplay,
+            ]),
+            ActiveCollisionHooks::MODIFY_CONTACTS,
+        )]
     ))
     .id();
 

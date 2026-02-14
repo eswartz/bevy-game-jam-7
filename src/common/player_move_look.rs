@@ -37,7 +37,7 @@ impl Plugin for PlayerMovementPlugin {
                     process_player_input_movement_for_fps
                         .run_if(not(is_cheating))
                         ,
-                        process_player_input_movement_for_space
+                    process_player_input_movement_for_space
                         .run_if(not(is_cheating))
                         ,
                     process_player_input_non_movement,
@@ -250,8 +250,8 @@ impl Default for PlayerMovement {
         Self {
             velocity: 0.0,
             velocity_ramp: 0.0,
-            state: MovementState::Floating,
-            prev_state: MovementState::Floating,
+            state: MovementState::Falling,
+            prev_state: MovementState::Falling,
             medium_friction: 1.0,
             had_jump_event: false,
             jumping_out: false,
@@ -584,7 +584,7 @@ fn check_player_environment_fps(
                 // See if we're on a floor or close enough.
 
                 for manifold in coll.manifolds.iter() {
-                    let angle = manifold.normal.adjust_precision().angle_between(Vec3::Y);
+                    let angle = manifold.normal.adjust_precision().angle_between(Vec3::NEG_Y);
                     let steepness = angle / std::f32::consts::PI;
                     if steepness > 0.25 {
                         // Ignore very steep floors, walls, etc.
@@ -618,7 +618,7 @@ fn check_player_environment_fps(
                 let results = raycast.cast_ray(ray, &rc_settings);
                 if results.is_empty() {
                     movement.state = MovementState::Falling;
-                } else if results[0].1.distance < ((aabb.size().y / 4.0) as f32) - 0.5 {
+                } else if results[0].1.distance < (((aabb.size().y / 4.0) as f32) - 0.5) {
                     // OK, we should contact with the ground.
                     if movement.state != MovementState::Jumping {
                         movement.state = movement.state.to_grounded();
@@ -835,12 +835,12 @@ pub(crate) fn process_player_input_movement_for_fps(
 
                 let mut dir_velocity = transform.rotation * instant_thrust * movement.velocity_ramp;
 
-                const MAX_JUMP_MEDIUM_THICKNESS: f32 = 0.5;
+                const MAX_JUMP_MEDIUM_FRICTION: f32 = 0.25;
 
                 // See if we can jump.
                 let std_jump = up_down > 0.
                     && movement.state.is_on_surface()  // but not OnSlope
-                    && movement.medium_friction >= MAX_JUMP_MEDIUM_THICKNESS;
+                    && movement.medium_friction >= MAX_JUMP_MEDIUM_FRICTION;
                 if std_jump {
                     if !movement.had_jump_event {
                         movement.had_jump_event = true;
