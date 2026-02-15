@@ -52,7 +52,7 @@ impl Plugin for LogicPlugin {
                 )
                 .run_if(not(is_paused))
                 .run_if(not(is_in_menu))
-                .run_if(is_level_active)
+                .run_if(in_state(LevelState::Playing))
                 .run_if(in_state(ProgramState::InGame))
             )
 
@@ -123,11 +123,12 @@ pub(crate) fn spawn_ball(
     generator_q: Query<(Entity, &Transform), With<Generator>>,
     scoreable_q: Single<&Scoreable, With<LevelRoot>>,
     world: Res<WorldMarkerEntity>,
-    delay: Res<SpawnDelay>,
+    mut delay: ResMut<SpawnDelay>,
     time: Res<Time<Physics>>,
     spawning: Res<Spawning>,
     fx: Res<FxAssets>,
     models: Res<ModelAssets>,
+    difficulty: Res<LevelDifficulty>,
     mut timer: ResMut<SpawnTimer>,
 ) {
     if !spawning.0 {
@@ -138,14 +139,26 @@ pub(crate) fn spawn_ball(
         timer.0 = Timer::from_seconds(delay.0.as_secs_f32(), TimerMode::Repeating);
     }
     if !timer.tick(time.delta()).just_finished() {
-        timer.set_duration(delay.0); // in case it changed
+        let (decay, min) = match difficulty.0 {
+            Difficulty::Easy => (0.99999, 1.0),
+            Difficulty::Normal => (0.9999, 0.5),
+            Difficulty::Hard => (0.999, 0.25),
+        };
+        delay.0 = delay.0.mul_f32(decay).max(Duration::from_secs_f32(min));
+
+        timer.set_duration(delay.0);
         return;
     }
 
     let mut rng = rand::rng();
 
+    let spawn_chance = match difficulty.0 {
+        Difficulty::Easy => 0.2,
+        Difficulty::Normal => 0.5,
+        Difficulty::Hard => 0.8,
+    };
     for (_ent, xfrm) in generator_q.iter() {
-        if rng.random_bool(0.2) {
+        if rng.random_bool(spawn_chance) {
             commands.spawn((
                 ChildOf(world.0),
                 SceneRoot(models.gold_ball.clone()),

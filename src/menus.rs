@@ -12,6 +12,8 @@ use crate::ExitRequest;
 use crate::assets::GuiAssets;
 use crate::common::*;
 use crate::game::CurrentLevel;
+use crate::game::Difficulty;
+use crate::game::LevelDifficulty;
 use crate::game::LevelList;
 use crate::game::LevelIndex;
 
@@ -197,27 +199,27 @@ fn on_enter_game_menu(
     mut history: ResMut<MenuItemSelectionHistory>,
     level_list: Res<LevelList>,
 ) {
-    // macro_rules! make_res_enum_getter_setter {
-    //     ($getter:ident $setter:ident => $enum:ident $res:ident $field:tt) => {
-    //         let $getter = commands.register_system(IntoSystem::into_system(
-    //             |In(entity): In<Entity>, mut enum_q: Query<&mut MenuEnum>, res: Res<$res>| {
-    //                 enum_q.get_mut(entity).unwrap().current = Some(
-    //                     $enum::VARIANTS
-    //                         .iter()
-    //                         .position(|e| *e == res.$field)
-    //                         .unwrap(),
-    //                 );
-    //             },
-    //         ));
-    //         let $setter = commands.register_system(IntoSystem::into_system(
-    //             |In(v): In<usize>, mut res: ResMut<$res>| {
-    //                 res.$field = $enum::VARIANTS[v];
-    //             },
-    //         ));
-    //     };
-    // }
+    macro_rules! make_res_enum_getter_setter {
+        ($getter:ident $setter:ident => $enum:ident $res:ident $field:tt) => {
+            let $getter = commands.register_system(IntoSystem::into_system(
+                |In(entity): In<Entity>, mut enum_q: Query<&mut MenuEnum>, res: Res<$res>| {
+                    enum_q.get_mut(entity).unwrap().current = Some(
+                        $enum::VARIANTS
+                            .iter()
+                            .position(|e| *e == res.$field)
+                            .unwrap(),
+                    );
+                },
+            ));
+            let $setter = commands.register_system(IntoSystem::into_system(
+                |In(v): In<usize>, mut res: ResMut<$res>| {
+                    res.$field = $enum::VARIANTS[v];
+                },
+            ));
+        };
+    }
 
-    // make_res_enum_getter_setter!(get_difficulty set_difficulty => Difficulty LevelDifficulty 0);
+    make_res_enum_getter_setter!(get_difficulty set_difficulty => Difficulty LevelDifficulty 0);
 
     fn get_level(In(entity): In<Entity>, mut enum_q: Query<&mut MenuEnum>, next_level_index: Option<Res<LevelIndex>>) {
         let index = next_level_index.map_or(0, |nli| nli.0);
@@ -251,16 +253,16 @@ fn on_enter_game_menu(
         ),
         EnumMenuActions::SelectStartLevelEnum,
     )
-    // .add_item(
-    //     "Difficulty",
-    //     MenuEnum::new(
-    //         get_difficulty,
-    //         set_difficulty,
-    //         || Difficulty::VARIANTS.len(),
-    //         |index| Difficulty::VARIANTS[index].to_string(),
-    //     ),
-    //     EnumMenuActions::DifficultyEnum,
-    // )
+    .add_item(
+        "Difficulty",
+        MenuEnum::new(
+            get_difficulty,
+            set_difficulty,
+            || Difficulty::VARIANTS.len(),
+            |index| Difficulty::VARIANTS[index].to_string(),
+        ),
+        EnumMenuActions::DifficultyEnum,
+    )
     .add_item("Back", (), SimpleMenuActions::Back)
     .finish(&mut history);
 }
@@ -335,7 +337,7 @@ impl MenuItemHandler for SliderMenuActions {}
 
 #[derive(Debug, Clone)]
 pub(crate) enum EnumMenuActions {
-    // DifficultyEnum,
+    DifficultyEnum,
     SelectStartLevelEnum,
     AntialiasingEnum,
     MeshQualityEnum,

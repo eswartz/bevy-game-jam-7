@@ -143,7 +143,7 @@ fn collect_player_look(
     mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
     settings: Res<PlayerControllerSettings>,
     action_state: Res<ActionState<UserAction>>,
-    mouse_scroll: Res<bevy::input::mouse::AccumulatedMouseScroll>,
+    // mouse_scroll: Res<bevy::input::mouse::AccumulatedMouseScroll>,
     player_q: Single<Entity, With<OurPlayer>>,
     mut writer: MessageWriter<PlayerInput>,
 ) {
@@ -177,8 +177,8 @@ fn collect_player_look(
     // if mouse_scroll.delta != Vec2::ZERO && mouse_scroll.delta.y.abs() >= 8.0 {
     //     tilt = 0.0;
     // }
-    let mut tilt = 0.0;
-    instant_head_turn.z = tilt * settings.turn_scale.z;
+    // let mut tilt = 0.0;
+    // instant_head_turn.z = tilt * settings.turn_scale.z;
 
     // Don't repeat, else it's just a 360 on the slightest lingering touch.
     if action_state.just_pressed(&UserAction::TurnAround) {

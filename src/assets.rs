@@ -119,6 +119,11 @@ pub struct SkyboxAssets {
     // #[asset(path = "textures/zwinger_night_4k.exr")]
     // #[allow(unused)]
     // pub zwinger: Handle<Image>,
+
+    #[asset(path = "textures/Human_mouth_close_interior.exr")]
+    #[allow(unused)]
+    pub mouth_sky: Handle<Image>,
+
 }
 
 #[derive(Resource, AssetCollection)]

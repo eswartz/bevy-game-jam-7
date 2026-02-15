@@ -12,6 +12,7 @@ use bevy_tweening::lens::TextColorLens;
 use bevy_tweening::{AnimTarget, EaseMethod, Tween, TweenAnim};
 use leafwing_input_manager::prelude::ActionState;
 pub use logic::*;
+use strum::{EnumIter, VariantArray};
 
 use std::time::Duration;
 
@@ -38,6 +39,7 @@ impl Plugin for GamePlugin {
 
             .insert_resource(LevelList(default()))
             .insert_resource(LevelIndex(0))
+            .init_resource::<LevelDifficulty>()
 
             .add_plugins(level_0::LevelPlugin)
             .add_plugins(level_1::LevelPlugin)
@@ -169,6 +171,36 @@ pub(crate) struct CurrentLevel(pub(crate) LevelInfo);
 #[reflect(Resource, Default)]
 pub struct LevelIndex(pub usize);
 
+/// Current difficulty.
+#[derive(Resource, Default, Debug, Clone, PartialEq, Reflect)]
+#[reflect(Resource)]
+#[type_path = "game"]
+
+pub struct LevelDifficulty(pub Difficulty);
+
+
+/// Difficulty rating.
+#[derive(
+    Resource,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Default,
+    Reflect,
+    EnumIter,
+    strum_macros::Display,
+    VariantArray,
+)]
+#[reflect(Resource)]
+#[type_path = "game"]
+pub enum Difficulty {
+    Easy,
+    #[default]
+    Normal,
+    Hard,
+}
+
 /// The current score.
 #[derive(Resource, Reflect, Default, Debug)]
 #[reflect(Resource, Default)]
@@ -216,6 +248,7 @@ pub enum CameraEffects {
 pub enum SkyboxSelection {
     Space,
     Farm,
+    Teeth,
 }
 
 /// Place on LevelRoot for the music track to use.
@@ -474,6 +507,7 @@ pub(crate) fn spawn_level(
     level_list: Res<LevelList>,
     level_index: Res<LevelIndex>,
     world: Res<WorldMarkerEntity>,
+    difficulty: Res<LevelDifficulty>,
     mut score_q: Query<&mut Text, (With<ScoreArea>, Without<GameStatusArea>)>,
     mut status_q: Query<&mut Text, (With<GameStatusArea>, Without<ScoreArea>)>,
 ) {
@@ -493,6 +527,14 @@ pub(crate) fn spawn_level(
         })
     ;
     commands.insert_resource(CurrentScore::default());
+
+    commands.insert_resource(SpawnDelay(
+        Duration::from_secs(match difficulty.0 {
+            Difficulty::Easy => 3,
+            Difficulty::Normal => 2,
+            Difficulty::Hard => 1,
+        })
+    ));
 
     score_q.single_mut().unwrap().clear();
     status_q.single_mut().unwrap().clear();
@@ -543,6 +585,7 @@ fn start_skybox_setup(
         let (brightness, skybox) = match selection {
             SkyboxSelection::Space => (100.0, skyboxes.star_map.clone()),
             SkyboxSelection::Farm => (light_consts::lux::CLEAR_SUNRISE, skyboxes.pure_sky.clone()),
+            SkyboxSelection::Teeth => (light_consts::lux::CLEAR_SUNRISE, skyboxes.mouth_sky.clone()),
         };
         let with_reflection_probe = Some((cam, 100.0));
         // let with_reflection_probe = None;
