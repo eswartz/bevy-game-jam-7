@@ -1,6 +1,6 @@
 [package]
 name = "fever"
-version = "0.1.0"
+version = "0.5.0"
 edition = "2024"
 
 [dependencies]
@@ -28,6 +28,9 @@ bevy = { version = "0.18.0", default-features = false, features = [
     "track_location",
     "asset_processor",
     "experimental_pbr_pcss",
+
+    "x11",
+    "wayland",
 
     # "basis-universal",
     # "trace_tracy",
