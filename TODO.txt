@@ -1,18 +1,7 @@
 
-//-- use marker for Skybox
-// -- use enums for MusicTrack
--- more Skyboxes or world geometry
-//-- different materials in levels
-
 -- level enter/exit animation!
 
 -- music must fade in/out
-
-//-- fix pause in menu
-
-//-- piling on overlays when backquote from Escape menu.
-
--- always starts collidable without visible net
 
 -- on level exit, let user input cancel the state transition
 

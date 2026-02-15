@@ -351,6 +351,7 @@ pub(crate) fn check_ball_loss(
 pub(crate) fn check_ball_catch(
     mut reader: MessageReader<CollisionEnd>,
     mut commands: Commands,
+    player_catching_q: Query<(), (With<Player>, With<Catching>)>,
     net_q: Query<Entity, With<NetCollider>>,
     spawned_q: Query<(Entity, &Transform, &GlobalTransform), (With<Spawned>, Without<Ignored>)>, // toplevel
     scoreable_q: Query<&Scoreable>,
@@ -359,6 +360,11 @@ pub(crate) fn check_ball_catch(
     mut score: ResMut<CurrentScore>,
     fx: Res<FxAssets>,
 ) {
+    if player_catching_q.single().is_err() {
+        // Don't catch!
+        return
+    }
+
     let Some(net) = net_q.iter().next() else {
         return;
     };
@@ -480,6 +486,7 @@ fn check_actions(
     fx: Res<FxAssets>,
     time: Res<Time<Physics>>,
     shake_q: Query<Entity, With<ShakingSound>>,
+    player_q: Query<Entity, With<Player>>,
     mut in_hand_q: Query<(Entity, &Transform), With<InHand>>,
     tween_anim_q: Query<Entity, (With<TweenAnim>, With<InHand>)>,
     // fire_pressed: Option<Res<FirePressed>>,
@@ -545,6 +552,17 @@ fn check_actions(
     };
 
     if show || hide {
+        // Only one player...
+        let Ok(player) = player_q.single() else {
+            log::error!("no single Player");
+            return;
+        };
+        if show {
+            commands.entity(player).insert(Catching);
+        } else if hide {
+            commands.entity(player).remove::<Catching>();
+        }
+
         let mut any = false;
         for (ent, xfrm) in in_hand_q.iter_mut() {
             let out_xfrm = Transform::from_xyz(0.0, -1.0, 1.0)

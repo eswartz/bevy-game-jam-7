@@ -175,6 +175,8 @@ const END_LEVEL_DELAY_SECS: u64 = 3;
 #[type_path = "game"]
 pub struct AutoEndLevelTimer(pub(crate) Timer);
 
+// Map markers (in .glb)
+
 /// Marker for the top level entity of a level (for searching metadata).
 #[derive(Component, Reflect, Default)]
 #[reflect(Component, Default)]
@@ -282,6 +284,8 @@ pub(crate) struct NetCollider;
 #[type_path = "game"]
 pub(crate) struct ConsumerCollider;
 
+// World state
+
 /// Our "base" object and its initial transform.
 #[derive(Resource, Reflect)]
 #[reflect(Resource)]
@@ -317,11 +321,18 @@ pub(crate) struct ShakeTime(pub(crate) Duration);
 #[derive(Component)]
 pub(crate) struct ShakingSound;
 
-/////
+// Player state
 
-/// Marker for an object in the hand.
+/// Marker for an object (e.g. net) in the hand.
 #[derive(Component)]
 pub(crate) struct InHand;
+
+/// [Player] marker for currently catching.
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+#[type_path = "game"]
+pub(crate) struct Catching;
+
 
 /////
 
