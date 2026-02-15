@@ -1,7 +1,10 @@
 [package]
 name = "fever"
-version = "0.5.0"
+version = "0.0.5"
 edition = "2024"
+authors = ["Ed Swartz (github.com/eswartz)"]
+license = "MIT OR Apache 2"
+categories = ["game"]
 
 [dependencies]
 bevy = { version = "0.18.0", default-features = false, features = [
