@@ -267,9 +267,13 @@ fn check_grab_focus_state(
     }
 }
 
-/// The information area of the GUI (small font, corner)
+/// The information area of the GUI (smaller font, bottom left corner)
 #[derive(Component)]
 pub(crate) struct InfoArea;
+
+/// The information area of the GUI (smaller font, bottom)
+#[derive(Component)]
+pub(crate) struct InstructionsArea;
 
 /// The game status area of the GUI (large)
 #[derive(Component)]
@@ -294,7 +298,7 @@ fn setup_gui_nodes(
         InfoArea,
         Text::new(""),
         TextFont {
-            font: gui_assets.emoji.clone(),
+            font: gui_assets.std_ui.clone(),
             font_size: 10.0,
             ..default()
         },
@@ -303,6 +307,29 @@ fn setup_gui_nodes(
             top: Val::Px(12.0),
             left: Val::Px(12.0),
             ..default()
+        },
+    ));
+
+    // Instructions
+    commands.spawn((
+        DespawnOnExit(ProgramState::InGame),
+        InstructionsArea,
+        Visibility::Hidden,
+        Text::new(
+            "",
+        ),
+        TextFont {
+            font: gui_assets.std_ui.clone(),
+            font_size: 16.0,
+            .. default()
+        },
+        Node {
+            width: Val::Percent(100.),
+            height: Val::Percent(100.),
+            flex_direction: FlexDirection::Column,
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
+            .. default()
         },
     ));
 
@@ -354,9 +381,10 @@ fn setup_gui_nodes(
                 font_size: 64.0,
                 .. default()
             },
+            TextColor( Color::linear_rgba(0., 0., 0., 1.0)),
             TextShadow {
                 offset: Vec2::splat(4.),
-                color: Color::linear_rgba(0., 0., 0., 1.0),
+                color: Color::linear_rgba(0., 0., 0., 0.5),
             },
             TextLayout::new(Justify::Center, LineBreak::WordBoundary),
         ));
@@ -428,4 +456,10 @@ fn update_mute_ui(
             text.0 = new_text.to_string();
         }
     }
+}
+
+pub(crate) fn hide_instructions(
+    mut inst_q: Single<&mut Visibility, With<InstructionsArea>>,
+) {
+    **inst_q = Visibility::Hidden;
 }

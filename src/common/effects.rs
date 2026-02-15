@@ -87,3 +87,17 @@ impl Lens<Transform> for TransformPositionRotationLens {
         target.rotation = self.start.rotation.slerp(self.end.rotation, ratio);
     }
 }
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct TextShadowColorLens {
+    /// Start color.
+    pub start: Color,
+    /// End color.
+    pub end: Color,
+}
+
+impl Lens<TextShadow> for TextShadowColorLens {
+    fn lerp(&mut self, mut target: Mut<TextShadow>, ratio: f32) {
+        target.color = self.start.mix(&self.end, ratio);
+    }
+}

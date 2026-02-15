@@ -8,12 +8,14 @@ mod level_3;
 use bevy::camera::visibility::RenderLayers;
 use bevy::color::palettes::tailwind;
 use bevy::core_pipeline::Skybox;
+use bevy_tweening::lens::TextColorLens;
+use bevy_tweening::{AnimTarget, EaseMethod, Tween, TweenAnim};
 use leafwing_input_manager::prelude::ActionState;
 pub use logic::*;
 
 use std::time::Duration;
 
-use crate::assets::{ModelAssets, SkyboxAssets};
+use crate::assets::{GuiAssets, ModelAssets, SkyboxAssets};
 use crate::common::*;
 use crate::player_spawning::spawn_player;
 
@@ -75,14 +77,22 @@ impl Plugin for GamePlugin {
             )
             .add_systems(
                 OnTransition{ exited: GameplayState::Playing, entered: GameplayState::Setup },
-                despawn_level,
+                (
+                    hide_instructions,
+                    despawn_level,
+                )
             )
 
             .add_systems(OnEnter(LevelState::LevelLoaded),
                 (
                     start_skybox_setup,
+                    show_instructions,
                 ).chain()
                     .run_if(in_state(ProgramState::InGame))
+            )
+
+            .add_systems(OnExit(LevelState::Playing),
+                hide_instructions,
             )
 
             .add_systems(
@@ -286,6 +296,12 @@ pub(crate) struct ConsumerCollider;
 
 // World state
 
+/// Set when we showed the text.
+#[derive(Resource, Reflect)]
+#[reflect(Resource)]
+#[type_path = "game"]
+pub(crate) struct ShowedTutorial;
+
 /// Our "base" object and its initial transform.
 #[derive(Resource, Reflect)]
 #[reflect(Resource)]
@@ -332,7 +348,6 @@ pub(crate) struct InHand;
 #[reflect(Component)]
 #[type_path = "game"]
 pub(crate) struct Catching;
-
 
 /////
 
@@ -436,13 +451,10 @@ pub(crate) fn spawn_player_on_start(world: &mut World) {
     queue.apply(world);
 }
 
-pub(crate) fn spawn_level(
+pub(crate) fn setup_level(
     mut commands: Commands,
-    level_list: Res<LevelList>,
-    level_index: Res<LevelIndex>,
-    world: Res<WorldMarkerEntity>,
-    mut score_q: Query<&mut Text, (With<ScoreArea>, Without<GameStatusArea>)>,
-    mut status_q: Query<&mut Text, (With<GameStatusArea>, Without<ScoreArea>)>,
+    level_list: &LevelList,
+    level_index: &LevelIndex,
 ) {
     let index = level_index.0;
     if index >= level_list.0.len() {
@@ -454,7 +466,19 @@ pub(crate) fn spawn_level(
 
     let level = &level_list.0[level_index.0];
     commands.insert_resource(CurrentLevel(level.clone()));
+}
 
+pub(crate) fn spawn_level(
+    mut commands: Commands,
+    level_list: Res<LevelList>,
+    level_index: Res<LevelIndex>,
+    world: Res<WorldMarkerEntity>,
+    mut score_q: Query<&mut Text, (With<ScoreArea>, Without<GameStatusArea>)>,
+    mut status_q: Query<&mut Text, (With<GameStatusArea>, Without<ScoreArea>)>,
+) {
+    setup_level(commands.reborrow(), &level_list, &level_index);
+
+    let level = &level_list.0[level_index.0];
     log::info!("Entering level {}", level.label);
 
     commands
@@ -542,6 +566,83 @@ fn start_skybox_setup(
         commands.set_state(LevelState::Playing);
         log::warn!("2");
     }
+}
+
+fn show_instructions(
+    mut commands: Commands,
+    showed: Option<Res<ShowedTutorial>>,
+    fonts: Res<GuiAssets>,
+    instructions_q: Single<Entity, With<InstructionsArea>>,
+) {
+    if showed.is_some() {
+        return;
+    }
+
+    commands.insert_resource(ShowedTutorial);
+
+    let mut text_ent = Entity::PLACEHOLDER;
+
+    commands.entity(*instructions_q).insert(Visibility::Inherited)  // show
+    .with_children(|builder| {
+        text_ent = builder.spawn((
+            DespawnOnExit(GameplayState::Playing),
+            Text::new(
+                r#"
+Your job is simple:
+
+
+Choose when to start the balls dropping,
+then catch the yellow ones before they get lost!
+
+
+Use Left Mouse button to extend net."#,
+            ),
+            TextLayout::new(Justify::Center, LineBreak::WordBoundary),
+            TextFont {
+                font: fonts.std_ui.clone(),
+                font_size: 32.0,
+                .. default()
+            },
+            TextColor(Color::WHITE.with_alpha(0.5)),
+            TextShadow {
+                offset: Vec2::splat(2.),
+                color: Color::linear_rgba(0., 0., 0., 0.0),
+            },
+        )).id();
+    });
+
+    // Fade in and out.
+
+    let color_tween = Tween::new(
+        EaseMethod::EaseFunction(EaseFunction::CubicOut),
+        Duration::from_secs_f32(3.0),
+        TextColorLens {
+            start: Color::WHITE.with_alpha(0.0),
+            end: Color::WHITE.with_alpha(1.0),
+        }
+    )
+    .with_repeat(2, bevy_tweening::RepeatStrategy::MirroredRepeat);
+
+    let shadow_tween = Tween::new(
+        EaseMethod::EaseFunction(EaseFunction::CubicOut),
+        Duration::from_secs_f32(3.0),
+        TextShadowColorLens {
+            start: Color::linear_rgba(0., 0., 0., 0.0),
+            end: Color::linear_rgba(0., 0., 0., 1.0),
+        }
+    )
+    .with_repeat(2, bevy_tweening::RepeatStrategy::MirroredRepeat);
+
+    commands.entity(text_ent).try_insert((
+        DespawnOnExit(GameplayState::Playing),
+        TweenAnim::new(color_tween).with_destroy_on_completed(true),
+
+        // Add another TweenAnim.
+        children![(
+            TweenAnim::new(shadow_tween).with_destroy_on_completed(true),
+            AnimTarget::component::<TextShadow>(text_ent),
+        )]
+    ));
 }
 
 pub(crate) fn advance_level(
@@ -635,6 +736,9 @@ fn check_won_level(
         commands.set_state(LevelState::Initializing);
         commands.set_state(GameplayState::Done);
         commands.set_state(OverlayState::GameOverScreen);
+
+        // Restart next time.
+        commands.insert_resource(LevelIndex(0));
     } else {
         commands.insert_resource(LevelIndex(next_index));
         commands.set_state(LevelState::Advance);
