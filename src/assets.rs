@@ -123,8 +123,11 @@ pub struct SkyboxAssets {
 
 #[derive(Resource, AssetCollection)]
 pub struct ModelAssets {
-    #[asset(path = "models/sphere.glb#Scene0")]
-    pub sphere: Handle<Scene>,
+    #[asset(path = "models/gold_ball.glb#Scene0")]
+    pub gold_ball: Handle<Scene>,
+
+    #[asset(path = "models/yellow_ball.glb#Scene0")]
+    pub yellow_ball: Handle<Scene>,
 
     #[asset(path = "models/net.glb#Scene0")]
     pub net: Handle<Scene>,

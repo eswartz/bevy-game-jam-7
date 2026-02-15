@@ -4,7 +4,6 @@ use crate::assets::*;
 use crate::game::*;
 use crate::common::*;
 
-use bevy::camera::visibility::RenderLayers;
 use bevy::prelude::*;
 
 pub(crate) const ID: &str = "level1";

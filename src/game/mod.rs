@@ -241,7 +241,8 @@ pub(crate) struct ScoreGoal {
 }
 
 /// Marker for things that give a score.
-/// The [LevelRoot] is expected to have this.
+/// The [LevelRoot] is expected to have this,
+/// for cloning onto [Spawned] entities.
 #[derive(Component, Reflect, Default, Clone, Copy)]
 #[reflect(Component, Default)]
 #[type_path = "game"]
@@ -592,7 +593,7 @@ Your job is simple:
 
 
 Choose when to start the balls dropping,
-then catch the yellow ones before they get lost!
+then catch the gold ones before they get lost!
 
 
 Use Left Mouse button to extend net."#,

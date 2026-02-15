@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
-use bevy::time::common_conditions::once_after_delay;
 use bevy_asset_loader::loading_state::LoadingStateAppExt as _;
 use bevy_asset_loader::loading_state::config::ConfigureLoadingState as _;
 use bevy_asset_loader::loading_state::config::LoadingStateConfig;
@@ -92,7 +91,7 @@ pub(crate) fn init_background_audio(
 fn fade_in_background_audio(
     mut commands: Commands,
     bg_q: Single<(Entity, &SampleEffects), Added<BackgroundAudio>>,
-    mut volume_nodes: Query<&VolumeNode>,
+    volume_nodes: Query<&VolumeNode>,
 ) {
     // TODO: file issue, can't pause or restart this...?
     // let fade_duration = DurationSeconds(15.0);

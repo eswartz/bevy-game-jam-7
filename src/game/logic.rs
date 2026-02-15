@@ -145,14 +145,23 @@ pub(crate) fn spawn_ball(
     let mut rng = rand::rng();
 
     for (_ent, xfrm) in generator_q.iter() {
-        commands.spawn((
-            ChildOf(world.0),
-            SceneRoot(models.sphere.clone()),
-            xfrm.with_scale(Vec3::splat(time.elapsed_secs() % 1.0 + 0.5)),
-            Spawned,
-            **scoreable_q,
-        ))
-        // .observe(observe_spawn_mesh)
+        if rng.random_bool(0.2) {
+            commands.spawn((
+                ChildOf(world.0),
+                SceneRoot(models.gold_ball.clone()),
+                xfrm.with_scale(Vec3::splat(time.elapsed_secs() % 1.0 + 0.5)),
+                Spawned,
+                **scoreable_q,
+            ))
+        } else {
+            commands.spawn((
+                ChildOf(world.0),
+                SceneRoot(models.yellow_ball.clone()),
+                xfrm.with_scale(Vec3::splat(time.elapsed_secs() % 1.0 + 0.5)),
+                Spawned,
+                // not scoreable
+            ))
+        }
         ;
         commands.spawn((
             ChildOf(world.0),
@@ -294,6 +303,8 @@ pub(crate) fn check_ball_loss(
             let mut parent = *ent;
             loop {
                 if spawned_q.contains(parent) {
+
+                    // One we care about?
                     if let Ok(scoreable) = scoreable_q.get(parent) {
                         score.score -= scoreable.lose as i32;
 
@@ -314,6 +325,7 @@ pub(crate) fn check_ball_loss(
                         ));
                     }
 
+                    // Regardless of scoring, animate it to be removed.
                     let xfrm_tween = Tween::new(
                         EaseMethod::EaseFunction(EaseFunction::BackOut),
                         Duration::from_secs_f32(1.0),
@@ -380,10 +392,12 @@ pub(crate) fn check_ball_catch(
             let mut ball_gxfrm = None;
             for parent in parent_q.iter_ancestors(not_net) {
                 if let Ok((ent, xfrm, gxfrm)) = spawned_q.get(parent) {
+                    // Remember which one, so we can animate/delete it.
                     ball = Some(ent);
                     ball_xfrm = Some(xfrm);
                     ball_gxfrm = Some(gxfrm);
 
+                    // Was it one we care about?
                     if let Ok(scoreable) = scoreable_q.get(parent) {
                         score.score += scoreable.gain as i32;
 
@@ -402,7 +416,6 @@ pub(crate) fn check_ball_catch(
                             },
                             VolumeNode::from_linear(rng.random_range(0.85..1.0)),
                         ));
-
                     }
 
                     break;

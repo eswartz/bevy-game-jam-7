@@ -75,10 +75,10 @@
        style="color-interpolation-filters:sRGB;"
        inkscape:label="Drop Shadow"
        id="filter9"
-       x="-0.070081831"
-       y="-0.053527572"
-       width="1.1664649"
-       height="1.1271437">
+       x="-0.055721342"
+       y="-0.053382288"
+       width="1.1323545"
+       height="1.1267986">
       <feFlood
          result="flood"
          in="SourceGraphic"
@@ -140,7 +140,7 @@
          sodipodi:role="line"
          id="tspan4"
          x="65.567703"
-         y="46.853874">Go</tspan><tspan
+         y="46.853874">Start</tspan><tspan
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:75%;font-family:'Wee Bairn';-inkscape-font-specification:'Wee Bairn';text-align:center;text-anchor:middle;fill:#e8e632;fill-opacity:1;stroke-width:1.05833;stroke-dasharray:none"
          sodipodi:role="line"
          x="65.567703"

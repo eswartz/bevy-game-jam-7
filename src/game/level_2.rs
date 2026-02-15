@@ -4,7 +4,6 @@ use crate::assets::*;
 use crate::game::*;
 use crate::common::*;
 
-use bevy::camera::visibility::RenderLayers;
 use leafwing_input_manager::prelude::ActionState;
 use rand::RngExt;
 

@@ -1,11 +1,6 @@
 
-use crate::assets::*;
-use crate::audio::AudioPlugin;
 use crate::game::CameraEffects;
-use crate::game::GamePlugin;
 use crate::game::LevelRoot;
-use crate::menus::MenuPlugin;
-use bevy::color::palettes::tailwind;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::post_process::bloom::Bloom;
 use bevy::render::view::ColorGrading;
@@ -13,27 +8,14 @@ use bevy::render::view::ColorGradingGlobal;
 use bevy::render::view::ColorGradingSection;
 use bevy_seedling::prelude::*;
 
-use std::time::Duration;
-
-use avian3d::prelude::*;
 use bevy::camera::Exposure;
 use bevy::camera::visibility::RenderLayers;
 use bevy::core_pipeline::oit::OrderIndependentTransparencySettings;
 use bevy::core_pipeline::prepass::DepthPrepass;
-use bevy::ecs::message::MessageUpdateSystems;
 use bevy::prelude::*;
 use bevy::render::renderer::RenderAdapter;
 use bevy::render::renderer::RenderDevice;
 use bevy::render::view::Hdr;
-use bevy::{
-    asset::AssetMetaCheck,
-    dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
-    image::{ImageAddressMode, ImageSamplerDescriptor},
-    winit::WinitSettings,
-};
-use bevy_asset_loader::prelude::*;
-use bevy_egui::{EguiGlobalSettings, EguiPlugin};
-use bevy_skein::SkeinPlugin;
 
 use crate::common::*;
 
@@ -202,7 +184,7 @@ pub(crate) fn configure_camera_effects(mut ent_commands: EntityCommands, fx: &Ca
                     intensity: -1.0,
                     low_frequency_boost: 1.5,
                     low_frequency_boost_curvature: 0.25,
-                    high_pass_frequency: 1.0,
+                    // high_pass_frequency: 1.0,
                     scale: Vec2::new(0.5, 1.0),
                     ..default()
                 }
