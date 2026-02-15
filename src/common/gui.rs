@@ -355,7 +355,7 @@ fn setup_gui_nodes(
                 .. default()
             },
             TextShadow {
-                offset: Vec2::splat(8.),
+                offset: Vec2::splat(4.),
                 color: Color::linear_rgba(0., 0., 0., 1.0),
             },
             TextLayout::new(Justify::Center, LineBreak::WordBoundary),
