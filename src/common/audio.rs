@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_seedling::prelude::*;
+use bevy_tweening::Lens;
 
 pub struct AudioCommonPlugin;
 
@@ -62,6 +63,11 @@ pub(crate) fn initialize_audio(master: Single<Entity, With<MainBus>>, mut comman
             muted: false,
         },
         PoolSize(2 ..= 4),
+
+        // So we can apply fading.
+        sample_effects![
+            VolumeNode::default(),
+        ],
     ));
     commands.spawn((
         Name::new("SFX"),
@@ -111,5 +117,21 @@ pub(crate) fn apply_volumes(
 ) {
     for (_ent, user, mut vol) in vol_q.iter_mut() {
         vol.volume = if user.muted { Volume::SILENT } else { user.volume };
+    }
+}
+
+
+/// Fixme, VolumeNode/VolumeFade should work...
+#[derive(Debug)]
+#[allow(unused)]
+pub struct VolumeNodeLens {
+    pub start: VolumeNode,
+    pub end: VolumeNode,
+}
+
+impl Lens<VolumeNode> for VolumeNodeLens {
+    fn lerp(&mut self, mut target: Mut<VolumeNode>, ratio: f32) {
+        let new_linear = self.start.volume.linear().lerp(self.end.volume.linear(), ratio);
+        target.set_linear(new_linear);
     }
 }

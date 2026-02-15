@@ -1,9 +1,15 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
+use bevy::time::common_conditions::once_after_delay;
 use bevy_asset_loader::loading_state::LoadingStateAppExt as _;
 use bevy_asset_loader::loading_state::config::ConfigureLoadingState as _;
 use bevy_asset_loader::loading_state::config::LoadingStateConfig;
 use bevy_seedling::prelude::*;
 use bevy_seedling::sample::PlaybackSettings;
+use bevy_tweening::EaseMethod;
+use bevy_tweening::Tween;
+use bevy_tweening::TweenAnim;
 use leafwing_input_manager::prelude::ActionState;
 use rand::RngExt;
 
@@ -32,6 +38,13 @@ impl Plugin for AudioPlugin {
             )
             .add_systems(Update,
                 (
+                    fade_in_background_audio
+                        .run_if(in_state(LevelState::Playing))
+                    ,
+                )
+            )
+            .add_systems(Update,
+                (
                     spawn_menu_fx,
                     handle_user_actions,
                 )
@@ -39,6 +52,10 @@ impl Plugin for AudioPlugin {
         ;
     }
 }
+
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+struct BackgroundAudio;
 
 /// Add background music, which resets when the game starts or stops.
 pub(crate) fn init_background_audio(
@@ -50,18 +67,55 @@ pub(crate) fn init_background_audio(
     if let Ok(track) = track_q.single() {
         let mut rng = rand::rng();
         let sample = music.get_for(track).clone();
+
         commands.spawn((
             ChildOf(world_q.0),
             DespawnOnExit(GameplayState::Playing),
+
+            Name::new("Background Audio"),
+            BackgroundAudio,
             Music,
             SamplePlayer::new(sample).looping(),
             PlaybackSettings {
                 play_from: PlayFrom::Seconds(rng.random_range(0.0 .. 5.0 * 60.0)),
                 ..default()
             },
+            sample_effects![
+                VolumeNode::from_linear(0.)
+            ],
         ));
     } else {
         log::warn!("no MusicTrackSelection");
+    }
+}
+
+fn fade_in_background_audio(
+    mut commands: Commands,
+    bg_q: Single<(Entity, &SampleEffects), Added<BackgroundAudio>>,
+    mut volume_nodes: Query<&VolumeNode>,
+) {
+    // TODO: file issue, can't pause or restart this...?
+    // let fade_duration = DurationSeconds(15.0);
+
+    // let (volume, mut events) = volume_nodes.get_effect_mut(&bg_q).unwrap();
+    // volume.fade_to(Volume::UNITY_GAIN, fade_duration, &mut events);
+
+    let (_ent, fx) = *bg_q;
+
+    for fx_ent in fx.iter() {
+        if volume_nodes.contains(fx_ent) {
+            let tween = Tween::new(
+                EaseMethod::EaseFunction(EaseFunction::Linear),
+                Duration::from_secs_f32(15.0),
+                VolumeNodeLens {
+                    start: VolumeNode::from_linear(0.),
+                    end: VolumeNode::from_linear(1.),
+                }
+            );
+            commands.entity(fx_ent).try_insert((
+                TweenAnim::new(tween).with_destroy_on_completed(true),
+            ));
+        }
     }
 }
 

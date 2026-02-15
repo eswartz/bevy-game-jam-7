@@ -1,8 +1,6 @@
 
 -- level enter/exit animation!
 
--- music must fade in/out
-
 -- on level exit, let user input cancel the state transition
 
 -- release focus on window switch
