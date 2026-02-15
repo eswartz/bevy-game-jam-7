@@ -43,15 +43,7 @@ fn on_level_loaded(
 
 ) {
     let cam = viewer_camera_q.single().unwrap();
-    commands.spawn((
-        Name::new("Net"),
-        RenderLayers::layer(RENDER_LAYER_VIEW),
-        SceneRoot(models.net.clone()),
-        Transform::from_xyz(0.0, 0.0, -2.0).with_scale(Vec3::splat(2.0)),
-        Visibility::Hidden,
-        InHand,
-        ChildOf(cam),
-    ));
+    spawn_net(commands.reborrow(), models, cam);
 
     commands.insert_resource(Spawning(false));
     commands.insert_resource(SpawnDelay(Duration::from_secs(1)));

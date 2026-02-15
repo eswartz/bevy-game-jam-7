@@ -5,6 +5,7 @@ mod level_1;
 mod level_2;
 mod level_3;
 
+use bevy::camera::visibility::RenderLayers;
 use bevy::color::palettes::tailwind;
 use bevy::core_pipeline::Skybox;
 use leafwing_input_manager::prelude::ActionState;
@@ -12,7 +13,7 @@ pub use logic::*;
 
 use std::time::Duration;
 
-use crate::assets::SkyboxAssets;
+use crate::assets::{ModelAssets, SkyboxAssets};
 use crate::common::*;
 use crate::player_spawning::spawn_player;
 
@@ -369,6 +370,7 @@ pub(crate) fn level_spawn_finished(
         With<ConsumerCollider>,
     )>>,
     base_q: Query<(Entity, &Transform), With<BaseMarker>>,
+    net_q: Query<Entity, With<NetCollider>>,
 ) {
     for ent in sensable_q.iter() {
         commands.entity(ent).insert((
@@ -381,6 +383,9 @@ pub(crate) fn level_spawn_finished(
         commands.insert_resource(BaseEntity(ent, xfrm.clone()));
     } else {
         commands.remove_resource::<BaseEntity>();
+    }
+    if let Some(ent) = net_q.iter().next() {
+        commands.entity(ent).insert(ColliderDisabled);
     }
 
     commands.set_state(OverlayState::Hidden);
@@ -636,4 +641,21 @@ fn check_lost_level(
 
     // Restarts level.
     commands.set_state(LevelState::Advance);
+}
+
+fn spawn_net(
+    mut commands: Commands,
+    models: Res<ModelAssets>,
+    cam: Entity,
+) {
+    commands.spawn((
+        Name::new("Net"),
+        RenderLayers::layer(RENDER_LAYER_VIEW),
+        SceneRoot(models.net.clone()),
+        Transform::from_xyz(0.0, 0.0, -2.0).with_scale(Vec3::splat(2.0)),
+        Visibility::Hidden,
+        InHand,
+        ChildOf(cam),
+    ))
+    ;
 }
