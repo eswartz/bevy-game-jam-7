@@ -249,6 +249,7 @@ pub enum SkyboxSelection {
     Space,
     Farm,
     Teeth,
+    Station,
 }
 
 /// Place on LevelRoot for the music track to use.
@@ -585,7 +586,8 @@ fn start_skybox_setup(
         let (brightness, skybox) = match selection {
             SkyboxSelection::Space => (100.0, skyboxes.star_map.clone()),
             SkyboxSelection::Farm => (light_consts::lux::CLEAR_SUNRISE, skyboxes.pure_sky.clone()),
-            SkyboxSelection::Teeth => (light_consts::lux::CLEAR_SUNRISE, skyboxes.mouth_sky.clone()),
+            SkyboxSelection::Teeth => (light_consts::lux::LIVING_ROOM, skyboxes.mouth_sky.clone()),
+            SkyboxSelection::Station => (light_consts::lux::LIVING_ROOM, skyboxes.station_sky.clone()),
         };
         let with_reflection_probe = Some((cam, 100.0));
         // let with_reflection_probe = None;

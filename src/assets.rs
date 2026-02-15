@@ -120,6 +120,10 @@ pub struct SkyboxAssets {
     // #[allow(unused)]
     // pub zwinger: Handle<Image>,
 
+    #[asset(path = "textures/dresden_station_night.exr")]
+    #[allow(unused)]
+    pub station_sky: Handle<Image>,
+
     #[asset(path = "textures/Human_mouth_close_interior.exr")]
     #[allow(unused)]
     pub mouth_sky: Handle<Image>,
