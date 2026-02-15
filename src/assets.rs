@@ -135,8 +135,8 @@ pub struct ModelAssets {
     #[asset(path = "models/gold_ball.glb#Scene0")]
     pub gold_ball: Handle<Scene>,
 
-    #[asset(path = "models/yellow_ball.glb#Scene0")]
-    pub yellow_ball: Handle<Scene>,
+    #[asset(path = "models/cyan_ball.glb#Scene0")]
+    pub cyan_ball: Handle<Scene>,
 
     #[asset(path = "models/net.glb#Scene0")]
     pub net: Handle<Scene>,

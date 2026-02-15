@@ -121,6 +121,7 @@ pub(crate) fn check_spawn_toggle(
 pub(crate) fn spawn_ball(
     mut commands: Commands,
     generator_q: Query<(Entity, &Transform), With<Generator>>,
+    balls_q: Query<&Spawned>,
     scoreable_q: Single<&Scoreable, With<LevelRoot>>,
     world: Res<WorldMarkerEntity>,
     mut delay: ResMut<SpawnDelay>,
@@ -132,6 +133,10 @@ pub(crate) fn spawn_ball(
     mut timer: ResMut<SpawnTimer>,
 ) {
     if !spawning.0 {
+        return;
+    }
+
+    if balls_q.count() >= 100 {
         return;
     }
 
@@ -160,6 +165,7 @@ pub(crate) fn spawn_ball(
     for (_ent, xfrm) in generator_q.iter() {
         if rng.random_bool(spawn_chance) {
             commands.spawn((
+                DespawnAfter(Duration::from_secs(30)),
                 ChildOf(world.0),
                 SceneRoot(models.gold_ball.clone()),
                 xfrm.with_scale(Vec3::splat(time.elapsed_secs() % 1.0 + 0.5)),
@@ -168,8 +174,9 @@ pub(crate) fn spawn_ball(
             ))
         } else {
             commands.spawn((
+                DespawnAfter(Duration::from_secs(30)),
                 ChildOf(world.0),
-                SceneRoot(models.yellow_ball.clone()),
+                SceneRoot(models.cyan_ball.clone()),
                 xfrm.with_scale(Vec3::splat(time.elapsed_secs() % 1.0 + 0.5)),
                 Spawned,
                 // not scoreable
