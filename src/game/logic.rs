@@ -65,6 +65,7 @@ impl Plugin for LogicPlugin {
                 )
                     .run_if(not(is_in_menu))
                     .run_if(is_level_active)
+                    .run_if(not(is_paused))
                     .run_if(not(egui_wants_any_input))
                     .run_if(in_state(ProgramState::InGame))
                 ,
