@@ -1,8 +1,8 @@
 [build]
-rustflags = ["-Z", "threads=8",
- # (Nightly) Make the current crate share its generic instantiations
-  "-Zshare-generics=y",
-]
+# rustflags = ["-Z", "threads=8",
+#  # (Nightly) Make the current crate share its generic instantiations
+#   "-Zshare-generics=y",
+# ]
 
 [unstable]
 codegen-backend = true

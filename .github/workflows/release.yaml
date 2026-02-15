@@ -37,7 +37,8 @@ jobs:
 
       - name: Build
         run: |
-          cargo build --release --target wasm32-unknown-unknown
+          # cargo build --release --target wasm32-unknown-unknown
+          cargo build  --target wasm32-unknown-unknown
 
       - name: Prepare package
         run: |
@@ -86,20 +87,20 @@ jobs:
 
       - name: Build
         run: |
-          cargo build --release --target x86_64-unknown-linux-gnu
+          # cargo build --release --target x86_64-unknown-linux-gnu
+          cargo build --target x86_64-unknown-linux-gnu
 
       - name: Prepare package
         run: |
-          mkdir linux
-          cp target/x86_64-unknown-linux-gnu/release/${{ env.binary }} linux/
-          cp LICENSE* README* linux/ || true # Try to copy, but ignore if it can't copy if source directory does not exist
-          cp -r assets linux/ || true # Try to copy, but ignore if it can't copy if source directory does not exist
+          mkdir linux/${{ env.binary }}
+          cp target/x86_64-unknown-linux-gnu/release/${{ env.binary }} linux/${{ env.binary }}/
+          cp LICENSE* README* linux/${{ env.binary }}/ || true # Try to copy, but ignore if it can't copy if source directory does not exist
+          cp -r assets linux/${{ env.binary }}/ || true # Try to copy, but ignore if it can't copy if source directory does not exist
 
       - name: Package as a zip
         working-directory: ./linux
         run: |
-          #zip --recurse-paths ../${{ env.binary }}.zip .
-          bsdtar -c -a -f ../${{ env.binary }}.zip -s ",^,${{ env.binary }}/," .
+          zip --recurse-paths ../${{ env.binary }}.zip ${{ env.binary }}
 
       - name: Upload binaries to artifacts
         uses: actions/upload-artifact@v4
@@ -134,19 +135,21 @@ jobs:
 
       - name: Build
         run: |
-          cargo build --release --target x86_64-pc-windows-msvc
+          # cargo build --release --target x86_64-pc-windows-msvc
+          cargo build --target x86_64-pc-windows-msvc
 
       - name: Prepare package
         run: |
           mkdir windows
-          cp target/x86_64-pc-windows-msvc/release/${{ env.binary }}.exe windows/
+          mkdir windows\${{ env.binary }}
+          cp target/x86_64-pc-windows-msvc/release/${{ env.binary }}.exe windows/${{ env.binary }}/
           mkdir assets -ea 0 # create the assets directory if it does not exist, it will get ignored in the zip if empty
-          cp -r assets windows/
-          cp LICENSE* README* windows/ || true # Try to copy, but ignore if it can't copy if source directory does not exist
+          cp -r assets windows/${{ env.binary }}/
+          cp LICENSE* README* windows/${{ env.binary }}/ || true # Try to copy, but ignore if it can't copy if source directory does not exist
 
       - name: Package as a zip
         run: |
-          Compress-Archive -Path windows/* -DestinationPath ${{ env.binary }}.zip
+          Compress-Archive -Path windows/${{ env.binary }} -DestinationPath ${{ env.binary }}.zip
 
       - name: Upload binaries to artifacts
         uses: actions/upload-artifact@v4
@@ -185,7 +188,8 @@ jobs:
 
       - name: Build
         run: |
-          cargo build --release --target aarch64-apple-darwin
+          #cargo build --release --target aarch64-apple-darwin
+          cargo build --target aarch64-apple-darwin
 
       - name: Prepare Package
         run: |
