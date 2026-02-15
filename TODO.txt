@@ -6,24 +6,3 @@
 -- release focus on window switch
 
 !! stole mouse visibility at end of level
-
-Feedback:
-
-(Note: no audio was available and a level was broken, so asked
-to filter to aesthetics. Explained the nightmare scenario was
-how the gameplay is "nightmarish", [[want:: is hectic and on the edge of being uncontrollable]]
-a feeling which escalates through the levels, to a (not at all)
-very hard "boss fight" against 4 turrets.
-I think I rushed through it. I downplayed the graphics and didn't
-finish the boss level. [[The intent of the level transitions,
-leaving their portent -- or whether
-⚠️ it might be a bad time for photosensitive people ⚠️, ensuring a
-more nightmarish entry and playthrough.]]
-)
--- Ugly! (Goal reached)
--- Was I going for trying to be bad or not trying hard at all?
--- better tutorial level -- no gameplay at all, just physics, movement,
-score-less use of balls and such.
--- player needs to DO something, ends too soon (oops I was using debug keys
-during the play :~)
--- the imposed scoring system is not explained
