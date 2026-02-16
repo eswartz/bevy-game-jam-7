@@ -25,7 +25,7 @@ impl Default for VideoSettings {
             antialiasing: Default::default(),
             mesh_quality: Default::default(),
             texture_quality: Default::default(),
-            glass_quality: Default::default(),
+            glass_quality: GlassQuality::Off,
         }
     }
 }

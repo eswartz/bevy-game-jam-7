@@ -330,7 +330,7 @@ pub(crate) enum SliderMenuActions {
     TurnSensitivityXSlider,
     TurnSensitivityYSlider,
     TurnSensitivityZSlider,
-    ZoomSensitivityYSlider,
+    // ZoomSensitivityYSlider,
 }
 
 impl MenuItemHandler for SliderMenuActions {}
@@ -340,9 +340,9 @@ pub(crate) enum EnumMenuActions {
     DifficultyEnum,
     SelectStartLevelEnum,
     AntialiasingEnum,
-    MeshQualityEnum,
+    // MeshQualityEnum,
     TextureQualityEnum,
-    GlassQualityEnum,
+    // GlassQualityEnum,
 }
 
 impl MenuItemHandler for EnumMenuActions {
@@ -472,7 +472,7 @@ fn on_enter_audio_menu(
 enum ControlMenuToggleActions {
     TurnInvertX,
     TurnInvertY,
-    ZoomInvertY,
+    // ZoomInvertY,
 }
 
 impl MenuItemHandler for ControlMenuToggleActions {}
@@ -532,11 +532,11 @@ fn on_enter_controls_menu(
     make_getter_setter!(get_turn_x set_turn_x => turn_scale x);
     make_getter_setter!(get_turn_y set_turn_y => turn_scale y);
     make_getter_setter!(get_turn_z set_turn_z => turn_scale z);
-    make_getter_setter!(get_zoom_y set_zoom_y => zoom_scale y);
+    // make_getter_setter!(get_zoom_y set_zoom_y => zoom_scale y);
 
     make_toggle!(get_invert_turn_x set_invert_turn_x => invert_turn_x);
     make_toggle!(get_invert_turn_y set_invert_turn_y => invert_turn_y);
-    make_toggle!(get_invert_zoom_y set_invert_zoom_y => invert_zoom_y);
+    // make_toggle!(get_invert_zoom_y set_invert_zoom_y => invert_zoom_y);
 
     MenuItemBuilder::new(
         commands,
@@ -630,22 +630,22 @@ fn on_enter_controls_menu(
         ),
         SliderMenuActions::TurnSensitivityZSlider,
     )
-    .add_item(
-        "Zoom Y Power",
-        MenuSlider::new(
-            get_zoom_y,
-            set_zoom_y,
-            || Some(PlayerControllerSettings::default().zoom_scale.y),
-            sens_to_ui,
-            sens_from_ui,
-            -5.0f32..=5.0f32,
-            0.1,
-        ),
-        SliderMenuActions::ZoomSensitivityYSlider,
-    )
-    .add_item("Invert Zoom Y", (
-        MenuToggle::new(get_invert_zoom_y, set_invert_zoom_y),
-    ), ControlMenuToggleActions::ZoomInvertY)
+    // .add_item(
+    //     "Zoom Y Power",
+    //     MenuSlider::new(
+    //         get_zoom_y,
+    //         set_zoom_y,
+    //         || Some(PlayerControllerSettings::default().zoom_scale.y),
+    //         sens_to_ui,
+    //         sens_from_ui,
+    //         -5.0f32..=5.0f32,
+    //         0.1,
+    //     ),
+    //     SliderMenuActions::ZoomSensitivityYSlider,
+    // )
+    // .add_item("Invert Zoom Y", (
+    //     MenuToggle::new(get_invert_zoom_y, set_invert_zoom_y),
+    // ), ControlMenuToggleActions::ZoomInvertY)
     .add_item("Back", (), SimpleMenuActions::Back)
     .finish(&mut history);
 }
@@ -689,9 +689,9 @@ fn on_enter_video_menu(
         };
     }
 
-    make_res_enum_getter_setter!(get_glass set_glass => GlassQuality VideoSettings glass_quality);
+    // make_res_enum_getter_setter!(get_glass set_glass => GlassQuality VideoSettings glass_quality);
     make_res_enum_getter_setter!(get_anti set_anti => Antialiasing VideoSettings antialiasing);
-    make_res_enum_getter_setter!(get_mesh_qual set_mesh_qual => MeshQuality VideoSettings mesh_quality);
+    // make_res_enum_getter_setter!(get_mesh_qual set_mesh_qual => MeshQuality VideoSettings mesh_quality);
     make_res_enum_getter_setter!(get_tex_qual set_tex_qual => TextureQuality VideoSettings texture_quality);
 
     MenuItemBuilder::new(
@@ -715,16 +715,16 @@ fn on_enter_video_menu(
         ),
         SliderMenuActions::FovSlider,
     )
-    .add_item(
-        "Glass Refraction Quality",
-        MenuEnum::new(
-            get_glass,
-            set_glass,
-            || GlassQuality::VARIANTS.len(),
-            |index| GlassQuality::VARIANTS[index].to_string(),
-        ),
-        EnumMenuActions::GlassQualityEnum,
-    )
+    // .add_item(
+    //     "Glass Refraction Quality",
+    //     MenuEnum::new(
+    //         get_glass,
+    //         set_glass,
+    //         || GlassQuality::VARIANTS.len(),
+    //         |index| GlassQuality::VARIANTS[index].to_string(),
+    //     ),
+    //     EnumMenuActions::GlassQualityEnum,
+    // )
     .add_item(
         "Antialiasing",
         MenuEnum::new(
@@ -735,16 +735,16 @@ fn on_enter_video_menu(
         ),
         EnumMenuActions::AntialiasingEnum,
     )
-    .add_item(
-        "Mesh Quality",
-        MenuEnum::new(
-            get_mesh_qual,
-            set_mesh_qual,
-            || MeshQuality::VARIANTS.len(),
-            |index| MeshQuality::VARIANTS[index].to_string(),
-        ),
-        EnumMenuActions::MeshQualityEnum,
-    )
+    // .add_item(
+    //     "Mesh Quality",
+    //     MenuEnum::new(
+    //         get_mesh_qual,
+    //         set_mesh_qual,
+    //         || MeshQuality::VARIANTS.len(),
+    //         |index| MeshQuality::VARIANTS[index].to_string(),
+    //     ),
+    //     EnumMenuActions::MeshQualityEnum,
+    // )
     .add_item(
         "Texture Quality",
         MenuEnum::new(

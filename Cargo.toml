@@ -1,6 +1,6 @@
 [package]
 name = "fever"
-version = "0.0.5"
+version = "0.0.6"
 edition = "2024"
 authors = ["Ed Swartz (github.com/eswartz)"]
 license = "MIT OR Apache 2"
@@ -127,5 +127,5 @@ debug-assertions = false
 # codegen-units = 1
 # Do a second optimization pass over the entire program, including dependencies.
 # Slows compile times, marginal improvements.
-# lto = "thin"
-opt-level = 1
+lto = "thin"
+# opt-level = 1
