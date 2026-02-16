@@ -90,7 +90,7 @@ jobs:
 
       - name: Prepare package
         run: |
-          mkdir linux/${{ env.binary }}
+          mkdir -p linux/${{ env.binary }}
           cp target/x86_64-unknown-linux-gnu/release/${{ env.binary }} linux/${{ env.binary }}/
           cp LICENSE* README* linux/${{ env.binary }}/ || true # Try to copy, but ignore if it can't copy if source directory does not exist
           cp -r assets linux/${{ env.binary }}/ || true # Try to copy, but ignore if it can't copy if source directory does not exist
@@ -142,7 +142,8 @@ jobs:
           cp target/x86_64-pc-windows-msvc/release/${{ env.binary }}.exe windows/${{ env.binary }}/
           mkdir assets -ea 0 # create the assets directory if it does not exist, it will get ignored in the zip if empty
           cp -r assets windows/${{ env.binary }}/
-          cp LICENSE* README* windows/${{ env.binary }}/ || true # Try to copy, but ignore if it can't copy if source directory does not exist
+          cp LICENSE*.* windows/${{ env.binary }}/ || true # Try to copy, but ignore if it can't copy if source directory does not exist
+          cp README*.* windows/${{ env.binary }}/ || true # Try to copy, but ignore if it can't copy if source directory does not exist
 
       - name: Package as a zip
         run: |
