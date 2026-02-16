@@ -34,6 +34,7 @@ bevy = { version = "0.18.0", default-features = false, features = [
 
     "x11",
     "wayland",
+    "webgpu",
 
     # "basis-universal",
     # "trace_tracy",
@@ -77,7 +78,8 @@ bevy_seedling = { version = "0.7.0", default-features = false, features = [
     "wav", "ogg", "rand", "reflect",
 
     "dev",
-    "stream", "loudness", "hrtf", "web_audio",
+    "stream", "loudness", "hrtf",
+    # "web_audio",
 ] }
 rustc-hash = "2.1.1"
 

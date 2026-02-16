@@ -577,10 +577,11 @@ fn init_player_settings(
 fn start_skybox_setup(
     mut commands: Commands,
     world_camera_q: Query<Entity, (With<Camera3d>, With<WorldCamera>)>,
+    gui_state: Res<GuiState>,
     skybox_q: Query<&SkyboxSelection, With<LevelRoot>>,
     skyboxes: Res<SkyboxAssets>,
 ) {
-    if let Ok(selection) = skybox_q.single() {
+    if gui_state.show_skybox && let Ok(selection) = skybox_q.single() {
         let cam = world_camera_q.single().unwrap();
 
         let (brightness, skybox) = match selection {
@@ -610,7 +611,6 @@ fn start_skybox_setup(
         commands.set_state(LevelState::LoadingSkybox);
     } else {
         commands.set_state(LevelState::Playing);
-        log::warn!("2");
     }
 }
 

@@ -29,8 +29,11 @@ pub(crate) fn ensure_3d_camera(
     render_device: Res<RenderDevice>,
     render_adapter: Res<RenderAdapter>,
 ) {
-    let use_clustered =
-        bevy::pbr::decal::clustered::clustered_decals_are_usable(&render_device, &render_adapter);
+    let use_clustered = if cfg!(not(target_arch = "wasm32")) {
+        bevy::pbr::decal::clustered::clustered_decals_are_usable(&render_device, &render_adapter)
+    }  else {
+        true
+    };
 
     let ent = if let Ok(ent) = world_camera_q.single() {
         // Got one.
@@ -90,13 +93,19 @@ fn configure_world_camera(mut ent_commands: EntityCommands, use_clustered: bool)
                     clear_color: Color::BLACK.into(),
                     ..default()
                 },
+
+                #[cfg(not(target_arch = "wasm32"))]
                 Hdr,
+
                 Projection::Perspective(PerspectiveProjection {
                     // fov: std::f32::consts::PI / 5.0,
                     fov: 75f32.to_radians(),
                     ..default()
                 }),
+
+                #[cfg(not(target_arch = "wasm32"))]
                 OrderIndependentTransparencySettings::default(),
+                #[cfg(not(target_arch = "wasm32"))]
                 Msaa::Off,
 
                 PlayerCamera(CameraMode::FirstPerson),
@@ -130,11 +139,15 @@ fn configure_viewer_camera(mut ent_commands: EntityCommands, use_clustered: bool
                 clear_color: ClearColorConfig::None,
                 ..default()
             },
-            Hdr,
+
             Projection::Perspective(PerspectiveProjection {
                 fov: 90f32.to_radians(),
                 ..default()
             }),
+
+            #[cfg(not(target_arch = "wasm32"))]
+            Hdr,
+            #[cfg(not(target_arch = "wasm32"))]
             Msaa::Off,  // must match WorldCamera
         ),
     ));

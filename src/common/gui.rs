@@ -186,6 +186,9 @@ impl Default for GuiState {
         Self {
             show_status: false,
             show_fps: false,
+            #[cfg(target_arch = "wasm32")]
+            show_skybox: false,
+            #[cfg(not(target_arch = "wasm32"))]
             show_skybox: true,
             show_inspector: true,
             show_inspector_always: false,

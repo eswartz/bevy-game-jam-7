@@ -8,6 +8,7 @@ use std::path::PathBuf;
 /// match_dir: a function which is passed a candidate Path
 /// and returns true if this looks like the base directory.
 ///
+#[cfg(not(target_arch = "wasm32"))]
 pub fn find_runtime_base_directory(match_dir: impl Fn(&Path) -> bool) -> Result<PathBuf, &'static str> {
     if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
         // We're building. This file is likely in the source tree. Step up.
@@ -42,6 +43,12 @@ pub fn find_runtime_base_directory(match_dir: impl Fn(&Path) -> bool) -> Result<
         }
     }
     Err("no base directory detected")
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn find_runtime_base_directory(_match_dir: impl Fn(&Path) -> bool) -> Result<PathBuf, &'static str> {
+    // No possibility of running "outside" the build on web.
+    Ok(Path::new(".").to_path_buf())
 }
 
 /// Detect the base directory which contains the given folder.
