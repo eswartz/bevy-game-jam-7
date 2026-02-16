@@ -34,7 +34,7 @@ bevy = { version = "0.18.0", default-features = false, features = [
 
     "x11",
     "wayland",
-    "webgpu",
+    # "webgpu", # noooo not yet
 
     # "basis-universal",
     # "trace_tracy",

@@ -61,8 +61,9 @@ pub struct VideoEffectSettingsChanged;
 #[reflect(Default, Clone, Component)]
 #[type_path = "game"]
 pub enum Antialiasing {
+    #[cfg_attr(target_arch = "wasm32", default)]
     Off,
-    #[default]
+    #[cfg_attr(not(target_arch = "wasm32"), default)]
     TSAA,
     // MSAA,    // can't use with OrderIndependentTransparency, so don't even offer it
 }

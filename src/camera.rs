@@ -29,11 +29,8 @@ pub(crate) fn ensure_3d_camera(
     render_device: Res<RenderDevice>,
     render_adapter: Res<RenderAdapter>,
 ) {
-    let use_clustered = if cfg!(not(target_arch = "wasm32")) {
-        bevy::pbr::decal::clustered::clustered_decals_are_usable(&render_device, &render_adapter)
-    }  else {
-        true
-    };
+    let use_clustered =
+        bevy::pbr::decal::clustered::clustered_decals_are_usable(&render_device, &render_adapter);
 
     let ent = if let Ok(ent) = world_camera_q.single() {
         // Got one.
@@ -46,7 +43,7 @@ pub(crate) fn ensure_3d_camera(
 
     configure_world_camera(commands.get_entity(ent).unwrap(), use_clustered);
     if let Ok(fx) = camera_fx_q.single() {
-        configure_camera_effects(commands.get_entity(ent).unwrap(), fx);
+        configure_camera_effects(commands.get_entity(ent).unwrap(), fx, true);
     } else {
         log::warn!("missing CameraEffects on scene");
     }
@@ -64,7 +61,7 @@ pub(crate) fn ensure_3d_camera(
 
     configure_viewer_camera(commands.get_entity(ent).unwrap(), use_clustered);
     if let Ok(fx) = camera_fx_q.single() {
-        configure_camera_effects(commands.get_entity(ent).unwrap(), fx);
+        configure_camera_effects(commands.get_entity(ent).unwrap(), fx, false);
     } else {
         log::warn!("missing CameraEffects on scene");
     }
@@ -94,7 +91,6 @@ fn configure_world_camera(mut ent_commands: EntityCommands, use_clustered: bool)
                     ..default()
                 },
 
-                #[cfg(not(target_arch = "wasm32"))]
                 Hdr,
 
                 Projection::Perspective(PerspectiveProjection {
@@ -105,7 +101,6 @@ fn configure_world_camera(mut ent_commands: EntityCommands, use_clustered: bool)
 
                 #[cfg(not(target_arch = "wasm32"))]
                 OrderIndependentTransparencySettings::default(),
-                #[cfg(not(target_arch = "wasm32"))]
                 Msaa::Off,
 
                 PlayerCamera(CameraMode::FirstPerson),
@@ -145,9 +140,7 @@ fn configure_viewer_camera(mut ent_commands: EntityCommands, use_clustered: bool
                 ..default()
             }),
 
-            #[cfg(not(target_arch = "wasm32"))]
             Hdr,
-            #[cfg(not(target_arch = "wasm32"))]
             Msaa::Off,  // must match WorldCamera
         ),
     ));
@@ -157,7 +150,7 @@ fn configure_viewer_camera(mut ent_commands: EntityCommands, use_clustered: bool
     }
 }
 
-pub(crate) fn configure_camera_effects(mut ent_commands: EntityCommands, fx: &CameraEffects) {
+pub(crate) fn configure_camera_effects(mut ent_commands: EntityCommands, fx: &CameraEffects, is_world: bool) {
     match fx {
         CameraEffects::Normal => {
             ent_commands.insert(Tonemapping::BlenderFilmic);
@@ -166,13 +159,24 @@ pub(crate) fn configure_camera_effects(mut ent_commands: EntityCommands, fx: &Ca
         }
         CameraEffects::Mode1 => {
             ent_commands.insert(Tonemapping::TonyMcMapface);
-            ent_commands.insert(Bloom {
-                intensity: -1.0,
-                low_frequency_boost: 1.0,
-                low_frequency_boost_curvature: 0.0,
-                high_pass_frequency: 1.0,
-                ..default()
-            });
+            if is_world || cfg!(not(target_arch = "wasm32")) {
+                ent_commands.insert(Bloom {
+                    intensity: -1.0,
+                    low_frequency_boost: 1.0,
+                    low_frequency_boost_curvature: 0.0,
+                    high_pass_frequency: 1.0,
+                    ..default()
+                });
+            } else {
+                // Can't stack two Blooms well in webgl
+                ent_commands.insert(Bloom {
+                    intensity: 0.,
+                    low_frequency_boost: 1.0,
+                    low_frequency_boost_curvature: 0.0,
+                    high_pass_frequency: 1.0,
+                    ..default()
+                });
+            }
             ent_commands.insert(ColorGrading {
                 global: ColorGradingGlobal {
                     exposure: 1.25,
@@ -192,16 +196,29 @@ pub(crate) fn configure_camera_effects(mut ent_commands: EntityCommands, fx: &Ca
         }
         CameraEffects::Mode2 => {
             ent_commands.insert(Tonemapping::TonyMcMapface);
-            ent_commands.insert(
-                Bloom {
-                    intensity: -1.0,
-                    low_frequency_boost: 1.5,
+            if is_world || cfg!(not(target_arch = "wasm32")) {
+                ent_commands.insert(
+                    Bloom {
+                        intensity: -1.0,
+                        low_frequency_boost: 1.0,
+                        low_frequency_boost_curvature: 0.25,
+                        // high_pass_frequency: 1.0,
+                        scale: Vec2::new(0.5, 1.0),
+                        max_mip_dimension: 1024,
+                        ..default()
+                    }
+                );
+            } else {
+                // Can't stack two Blooms well in webgl
+                ent_commands.insert(Bloom {
+                    intensity: 0.,
+                    low_frequency_boost: 1.0,
                     low_frequency_boost_curvature: 0.25,
                     // high_pass_frequency: 1.0,
                     scale: Vec2::new(0.5, 1.0),
                     ..default()
-                }
-            );
+                });
+            }
             ent_commands.insert(ColorGrading {
                 global: ColorGradingGlobal {
                     // exposure: 1.25,
