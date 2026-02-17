@@ -2,6 +2,7 @@
 <html lang="en">
 
 <body style="margin: 0px;">
+
   <script type="module">
     import './restart-audio-context.js'
     import init from './bevy_game.js'
@@ -12,6 +13,49 @@
       }
     });
   </script>
+
+  <div align="center">
+    <h1>
+      WARNING ! THIS IS JANK ! WARNING
+    </h1>
+    <p>This is a Proof of Concept.</p>
+    <p>It was published here AFTER the Bevy Game Jam 7 submission deadline. It is not intended for competition /
+      judging.</p>
+    <p>It is a minimal porting effort to validate wasm builds and deployment.</p>
+    <p />
+    <p>You probably want the <b>native desktop builds (Windows, macOS, Linux</b> at <a
+        href="https://eswartz75.itch.io/fever">the itch.io page</a>.
+    </p>
+    <p>
+      Be warned! <b>Turn down the volume</b> too, in case (see Help below)
+    </p>
+  </div>
+  <div width="50%">
+    <p>
+      Uses webgl2, should work anywhere with recent graphics cards and drivers. Just basic materials and fullscreen
+      effects.
+      Should run fine, at least until a lot of balls are spawned and not cleaned up.
+    </p>
+    <p><b>Help:</b> (wasm specific, see itch page for others))
+    <ul>
+      <li><b>Audio volume may be unexpectedly loud,</b> even at the configured 50% master volume default. The menu UI
+        should give an idea of the levels, using short samples.
+      <li>You can't resize the game window yet. You need to scroll the page in the browser to center it.</li>
+      <li>Use Escape to get menu (and pause) or to release mouse.</li>
+      <li>If mouse focus gets lost while playing, try:
+        <ul>
+        <li>Escape to game menu</li>
+        <li>Confirm you control the mouse again (see mouse cursor, moves outside browser)</ul>
+        <li>Activate (focus + click) a different toplevel window. Just Alt-Tab is not always enough!</li>
+        <li>Focus and click back on the Fever window.</li>
+        <li>The browser should report "Fever has captured the mouse, press Esc to release" or similar again.</li>
+        </ul>
+      <li>A panic / crash, if you hit one, manifests as as time pausing in the game and no longer responding to input. Refresh the browser tab to reload.
+</li>
+    <li>Same limitations and bugs apply as to the desktop builds (see the itch.io page for known issues)</li>
+    </ul>
+    </p>
+  </div>
 </body>
 
 </html>
