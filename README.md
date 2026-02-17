@@ -5,11 +5,19 @@ This is my Bevy Game Jam 7 entry.
 
 It's my first entry! I spent most of the effort making a reusable base layer after a few previous attempts, so the game itself is pretty simple.
 
-## Gameplay
+## Build
 
-There are four levels. You can choose the level (and Difficulty) from the `Game` menu. Otherwise the default `Play` option starts at the first level with `Normal` difficulty.
+* Rust, cargo, etc.
+* Uses Rust nightly (1.95.0, ~2026-02-xx).
+* `cargo run -r`
 
-Once you toggle the `Start / Stop` button, balls will emerge from the green generators. Capture the gold ones before they roll into the red pits -- or off the edge of the playfield, to get a successful score.
+## Publish
+
+The game is published at [[https://eswartz75.itch.io/fever]].
+
+It provides downloads for recent Windows, macOS, and Linux -- whatever `winit` and `wgpu` support.
+
+The EXPERIMENTAL, buggy, and hacked together wasm build is at https://eswartz75.itch.io/fever .
 
 ## Attributions
 
