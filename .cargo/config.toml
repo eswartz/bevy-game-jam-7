@@ -4,14 +4,14 @@
 #   "-Zshare-generics=y",
 # ]
 
-# [unstable]
-# codegen-backend = true
+[unstable]
+codegen-backend = true
 
-# [profile.dev]
-# codegen-backend = "cranelift"
+[profile.dev]
+codegen-backend = "cranelift"
 
-# [profile.dev.package."*"]
-# codegen-backend = "llvm"
+[profile.dev.package."*"]
+codegen-backend = "llvm"
 
 [patch.crates-io]
 # bevy = { path = "../bevy-fork" }
