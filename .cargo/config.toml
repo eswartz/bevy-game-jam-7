@@ -14,6 +14,7 @@ codegen-backend = "cranelift"
 codegen-backend = "llvm"
 
 [patch.crates-io]
+# firewheel = { path = "../firewheel" }
 # bevy = { path = "../bevy-fork" }
 # bevy = { git = "https://github.com/eswartz/bevy-fork.git", branch = "ejs-0.18" }
 # gltf = { git = "https://github.com/gltf-rs/gltf.git", branch = "main" }

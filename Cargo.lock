@@ -3178,6 +3178,7 @@ dependencies = [
  "firewheel-core",
  "firewheel-graph",
  "fixed-resample",
+ "log",
  "ringbuf",
  "thiserror 2.0.18",
  "tracing",
@@ -3185,14 +3186,15 @@ dependencies = [
 
 [[package]]
 name = "firewheel-graph"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e3aaba6687f98720a7ff827737253eea5a8f84fb1a48a934a75d097df1d26ac"
+checksum = "50e0fbec6ce61420f55a2a80f81a413dece71c2761ee061ac02c4eb648959b72"
 dependencies = [
  "arrayvec",
  "bevy_platform",
  "bevy_reflect",
  "firewheel-core",
+ "log",
  "num-traits",
  "ringbuf",
  "smallvec",
@@ -3267,6 +3269,7 @@ dependencies = [
  "bevy_platform",
  "firewheel-core",
  "firewheel-graph",
+ "log",
  "ringbuf",
  "rtaudio",
  "tracing",
@@ -5758,6 +5761,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7384a8837efe4abea0e53f3887b5072cbbd1ee95c298cff4fbd7a9f3ff23a48b"
 dependencies = [
  "bitflags 2.10.0",
+ "log",
  "rtaudio-sys",
  "thiserror 2.0.18",
  "tracing",
@@ -6326,6 +6330,7 @@ checksum = "eeb5f86fca091cd84bb3b946aae8ab823cbb01921a16b87273e8baa7199fac4c"
 dependencies = [
  "fast-interleave",
  "fixed-resample",
+ "log",
  "symphonia",
  "tracing",
 ]
